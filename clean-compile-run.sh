@@ -4,6 +4,7 @@ set -e
 
 mkdir -p assets/shaders
 pushd assets/shaders
+echo "Removing compiled shaders"
 # sudo dnf install glslc
 echo "Compiling vertex shaders"
 find ./ -type f -iname "*.vert" -exec sh -c 'glslc "$1" -o "$1.spv"' _ {} \;
