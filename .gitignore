@@ -1,3 +1,6 @@
+# Compiled shaders
+*.spv
+
 # CMake ignores
 build/
 CMakeLists.txt.user
