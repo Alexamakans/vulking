@@ -1,11 +1,8 @@
 #pragma once
 
 #include <optional>
-#include <set>
 #include <vector>
 #include <vulkan/vulkan_core.h>
-
-#include "common.hpp"
 
 const std::vector<const char *> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -30,15 +27,16 @@ public:
   const QueueFamilyIndices queueFamilyIndices;
   const SwapchainSupportDetails swapchainSupportDetails;
   const VkSampleCountFlagBits maxSamples;
+  const VkPhysicalDevice device;
 
-  GPU(VkPhysicalDevice device, VkSurfaceKHR surface);
+  GPU(VkPhysicalDevice device);
+  ~GPU();
 
   int rateSuitability();
+  uint32_t findMemoryType(uint32_t typeFilter,
+                          VkMemoryPropertyFlags properties);
 
 private:
-  VkPhysicalDevice device;
-  VkSurfaceKHR surface;
-  
   QueueFamilyIndices getQueueFamilyIndices();
   bool checkDeviceExtensionSupport();
   SwapchainSupportDetails getSwapchainSupportDetails();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <vulkan/vulkan_core.h>
 
 #ifndef VULKING_DEBUG_VALIDATION_SEVERITY
@@ -12,15 +13,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData);
 
+const std::vector<const char *> validationLayers = {
+    "VK_LAYER_KHRONOS_validation"};
+
 class DebugMessenger {
 public:
-  DebugMessenger() {};
+  DebugMessenger() = default;
   DebugMessenger(VkInstance instance, const VkAllocationCallbacks *allocator);
   ~DebugMessenger();
 
-private:
   bool checkValidationLayerSupport();
 
+private:
   VkDebugUtilsMessengerEXT vkDebugMessenger;
 
   VkInstance instance;

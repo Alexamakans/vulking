@@ -1,10 +1,15 @@
+#include <set>
+
+#include "../common.hpp"
+#include "../engine.hpp"
 #include "gpu.hpp"
 
-GPU::GPU(VkPhysicalDevice device, VkSurfaceKHR surface)
-    : device(device), surface(surface),
-      queueFamilyIndices(getQueueFamilyIndices()),
+GPU::GPU(VkPhysicalDevice device)
+    : device(device), queueFamilyIndices(getQueueFamilyIndices()),
       swapchainSupportDetails(getSwapchainSupportDetails()),
       maxSamples(getMaxUsableSampleCount()) {}
+
+GPU::~GPU() {};
 
 int GPU::rateSuitability() {
   VkPhysicalDeviceProperties deviceProperties;
@@ -61,7 +66,8 @@ GPU::QueueFamilyIndices GPU::getQueueFamilyIndices() {
     }
 
     VkBool32 presentSupport = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, Engine::surface,
+                                         &presentSupport);
     if (presentSupport) {
       indices.presentFamily = i;
     }
@@ -98,31 +104,38 @@ bool GPU::checkDeviceExtensionSupport() {
 
 GPU::SwapchainSupportDetails GPU::getSwapchainSupportDetails() {
   SwapchainSupportDetails details;
-  CHK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+  CHK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, Engine::surface,
                                                 &details.capabilities),
-      "failed to get physical device surface capabilities")
+      "failed to get physical device Engine::surface "
+      "capabilities")
 
   uint32_t formatCount;
-  CHK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
-                                           nullptr),
-      "failed to get physical device surface formats count");
+  CHK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, Engine::surface,
+                                           &formatCount, nullptr),
+      "failed to get physical device Engine::surface formats "
+      "count");
 
   if (formatCount != 0) {
     details.formats.resize(formatCount);
-    CHK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
-                                             details.formats.data()),
-        "failed to get physical device surface formats");
+    CHK(vkGetPhysicalDeviceSurfaceFormatsKHR(
+            device, Engine::surface, &formatCount, details.formats.data()),
+        "failed to get physical device Engine::surface "
+        "formats");
   }
 
   uint32_t presentModeCount;
-  CHK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+  CHK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, Engine::surface,
                                                 &presentModeCount, nullptr),
-      "failed to get physical device surface present modes count");
+      "failed to get physical device Engine::surface present "
+      "modes "
+      "count");
   if (presentModeCount != 0) {
     details.presentModes.resize(presentModeCount);
-    CHK(vkGetPhysicalDeviceSurfacePresentModesKHR(
-            device, surface, &presentModeCount, details.presentModes.data()),
-        "failed to get physical device surface present modes");
+    CHK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, Engine::surface,
+                                                  &presentModeCount,
+                                                  details.presentModes.data()),
+        "failed to get physical device Engine::surface present "
+        "modes");
   }
 
   return swapchainSupportDetails;
@@ -153,4 +166,20 @@ VkSampleCountFlagBits GPU::getMaxUsableSampleCount() {
     return VK_SAMPLE_COUNT_2_BIT;
   }
   return VK_SAMPLE_COUNT_1_BIT;
+}
+
+uint32_t GPU::findMemoryType(uint32_t typeFilter,
+                             VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memoryProperties;
+  vkGetPhysicalDeviceMemoryProperties(device, &memoryProperties);
+
+  for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) &&
+        (memoryProperties.memoryTypes[i].propertyFlags & properties) ==
+            properties) {
+      return i;
+    }
+  }
+
+  throw std::runtime_error("failed to find suitable memory type");
 }

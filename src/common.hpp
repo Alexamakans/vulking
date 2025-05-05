@@ -15,12 +15,13 @@
 #define VULKING_ALLOCATOR nullptr
 #endif
 
-static const VkAllocationCallbacks *allocator = VULKING_ALLOCATOR;
+inline static const VkAllocationCallbacks *allocator = VULKING_ALLOCATOR;
 
-VkCommandBuffer beginSingleTimeCommands(VkDevice device) {
+inline VkCommandBuffer beginSingleTimeCommands(VkDevice device,
+                                               VkCommandPool pool) {
   VkCommandBufferAllocateInfo allocInfo{
       .sType = STYPE(COMMAND_BUFFER_ALLOCATE_INFO),
-      .commandPool = commandPool,
+      .commandPool = pool,
       .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
       .commandBufferCount = 1,
   };
@@ -40,7 +41,9 @@ VkCommandBuffer beginSingleTimeCommands(VkDevice device) {
   return commandBuffer;
 }
 
-void endSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer) {
+inline void endSingleTimeCommands(VkDevice device, VkCommandPool pool,
+                                  VkCommandBuffer commandBuffer,
+                                  VkQueue queue) {
   vkEndCommandBuffer(commandBuffer);
 
   VkSubmitInfo submitInfo{
@@ -49,9 +52,9 @@ void endSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer) {
       .pCommandBuffers = &commandBuffer,
   };
 
-  CHK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+  CHK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE),
       "failed to submit command buffer to queue")
-  CHK(vkQueueWaitIdle(graphicsQueue), "failed to wait for queue to be idle")
+  CHK(vkQueueWaitIdle(queue), "failed to wait for queue to be idle")
 
-  vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+  vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
 }

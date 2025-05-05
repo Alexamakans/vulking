@@ -1,11 +1,16 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common.hpp"
 #include "gpu.hpp"
 #include <vulkan/vulkan_core.h>
 
 class Swapchain {
 public:
+  GPU::SwapchainSupportDetails supportDetails;
+  VkSurfaceFormatKHR format;
+  VkExtent2D extent;
+  VkPresentModeKHR presentMode;
+
   Swapchain(VkDevice device, int width, int height,
             GPU::SwapchainSupportDetails supportDetails, VkSurfaceKHR surface)
       : surface(surface), supportDetails(supportDetails),
@@ -18,11 +23,6 @@ private:
   VkDevice device;
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
-
-  GPU::SwapchainSupportDetails supportDetails;
-  VkSurfaceFormatKHR format;
-  VkExtent2D extent;
-  VkPresentModeKHR presentMode;
 
   VkSurfaceFormatKHR
   chooseFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {

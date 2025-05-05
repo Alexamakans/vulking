@@ -1,11 +1,10 @@
 #pragma once
 #include <GLFW/glfw3.h>
-#include <memory>
-#include <new>
 #include <vulkan/vulkan_core.h>
 
 #include "debug_messenger.hpp"
-#include "swapchain.hpp"
+#include "graphics/gpu.hpp"
+#include "graphics/swapchain.hpp"
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -15,37 +14,31 @@ const bool enableValidationLayers = true;
 
 class Engine {
 public:
-  Engine(GLFWwindow *window) : window(window) {};
+  static GLFWwindow *window;
+  static VkInstance instance;
+  static VkSurfaceKHR surface;
+  static VkDevice device;
+  static VkCommandPool commandPool;
 
-  void init() {
-    createInstance();
-    if (enableValidationLayers) {
-      new (&debugMessenger) DebugMessenger;
-    }
-    createSurface();
-  }
+  static VkQueue graphicsQueue;
+  static VkQueue presentQueue;
 
-  ~Engine() {
-    if (enableValidationLayers) {
-      std::destroy_at(&debugMessenger);
-    }
-    vkDestroySurfaceKHR(instance, surface, allocator);
-    vkDestroyInstance(instance, allocator);
-    glfwDestroyWindow(window);
-    glfwTerminate();
-  };
+  static GPU gpu;
+  static Swapchain swapchain;
+
+  Engine(GLFWwindow *window);
+  void init();
+  ~Engine();
 
 private:
   void createInstance();
-  void createSurface();
-  void pickPhysicalDevice();
-  int rateDeviceSuitability();
-  void createDevice();
 
-  GLFWwindow *window;
-  VkInstance instance;
-  VkSurfaceKHR surface;
+  std::vector<const char *> getRequiredExtensions();
+
+  void createSurface();
+  void pickGPU();
+  void createDevice();
+  void createSwapchain();
+
   DebugMessenger debugMessenger;
-  VkDevice device;
-  VkPhysicalDevice physicalDevice;
 };
