@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.hpp>
 
 #define CHK(x, msg)                                                            \
   if (x != VK_SUCCESS) {                                                       \
