@@ -17,6 +17,7 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
+target_include_directories(vulking PRIVATE "includes")
 target_link_libraries(vulking Vulkan::Vulkan)
 target_link_libraries(vulking glfw)
 target_link_libraries(vulking glm::glm)
