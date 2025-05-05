@@ -39,11 +39,6 @@
 #define ENGINE_MINOR 0
 #define ENGINE_PATCH 1
 
-#define CHK(x, msg)                                                            \
-  if (x != VK_SUCCESS) {                                                       \
-    throw std::runtime_error(msg);                                             \
-  }
-
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -53,32 +48,9 @@ const std::string TEXTURE_PATH = "assets/textures/viking_room.png";
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const bool ENABLE_SAMPLE_SHADING = false;
 
-const std::vector<const char *> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"};
-
 const std::vector<const char *> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
-
-#define STYPE(x) VK_STRUCTURE_TYPE_##x
-
-static VKAPI_ATTR VkBool32 VKAPI_CALL
-debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-              VkDebugUtilsMessageTypeFlagsEXT messageType,
-              const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-              void *pUserData) {
-  // if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-  if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-    // if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-  }
-  return VK_FALSE;
-}
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
@@ -359,35 +331,6 @@ private:
         "failed to create instance")
   }
 
-  bool checkValidationLayerSupport() {
-    uint32_t layerCount;
-    CHK(vkEnumerateInstanceLayerProperties(&layerCount, nullptr),
-        "failed getting layer count")
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    CHK(vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()),
-        "failed getting layer properties")
-
-    for (const char *layerName : validationLayers) {
-      bool layerFound = false;
-
-      for (const auto &layerProperties : availableLayers) {
-        if (strcmp(layerName, layerProperties.layerName) == 0) {
-          layerFound = true;
-          break;
-        }
-      }
-
-      if (!layerFound) {
-        std::cerr << "layer " << std::quoted(layerName) << " not found"
-                  << std::endl;
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   std::vector<const char *> getRequiredExtensions() {
     uint32_t glfwExtensionCount = 0;
     const char **glfwExtensions;
@@ -459,44 +402,6 @@ private:
   }
 
   int rateDeviceSuitability(VkPhysicalDevice device) {
-    VkPhysicalDeviceProperties deviceProperties;
-    VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-    int score = 0;
-
-    if (!deviceFeatures.geometryShader) {
-      // Application can't function without geometry shaders
-      return 0;
-    }
-
-    if (!deviceFeatures.samplerAnisotropy) {
-      return 0;
-    }
-
-    QueueFamilyIndices indices = findQueueFamilies(device);
-    if (!indices.isComplete()) {
-      return 0;
-    }
-
-    if (!checkDeviceExtensionSupport(device)) {
-      return 0;
-    }
-
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-    bool swapChainAdequate = !swapChainSupport.formats.empty() &&
-                             !swapChainSupport.presentModes.empty();
-
-    // Discrete GPUs have a significant performance advantage
-    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-      score += 1000;
-    }
-
-    // Maximum possible size of textures affects graphics quality
-    score += deviceProperties.limits.maxImageDimension2D;
-
-    return score;
   }
 
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
@@ -1315,30 +1220,6 @@ private:
     endSingleTimeCommands(commandBuffer);
   }
 
-  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
-                         uint32_t height) {
-    auto commandBuffer = beginSingleTimeCommands();
-
-    VkBufferImageCopy region{
-        .bufferOffset = 0,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .mipLevel = 0,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        .imageOffset = {0, 0, 0},
-        .imageExtent = {width, height, 1},
-    };
-
-    vkCmdCopyBufferToImage(commandBuffer, buffer, image,
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    endSingleTimeCommands(commandBuffer);
-  }
 
   void generateMipmaps(VkImage image, VkFormat imageFormat, uint32_t width,
                        uint32_t height, uint32_t mipLevels) {
@@ -1828,73 +1709,6 @@ private:
     vkCmdEndRenderPass(commandBuffer);
 
     CHK(vkEndCommandBuffer(commandBuffer), "failed to record command buffer")
-  }
-
-  VkCommandBuffer beginSingleTimeCommands() {
-    VkCommandBufferAllocateInfo allocInfo{
-        .sType = STYPE(COMMAND_BUFFER_ALLOCATE_INFO),
-        .commandPool = commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    VkCommandBuffer commandBuffer;
-    CHK(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer),
-        "failed to allocate command buffer")
-
-    VkCommandBufferBeginInfo beginInfo{
-        .sType = STYPE(COMMAND_BUFFER_BEGIN_INFO),
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-
-    CHK(vkBeginCommandBuffer(commandBuffer, &beginInfo),
-        "failed to begin command buffer")
-
-    return commandBuffer;
-  }
-
-  void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{
-        .sType = STYPE(SUBMIT_INFO),
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
-    };
-
-    CHK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
-        "failed to submit command buffer to queue")
-    CHK(vkQueueWaitIdle(graphicsQueue), "failed to wait for queue to be idle")
-
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-  }
-
-  VkSampleCountFlagBits getMaxUsableSampleCount() {
-    VkPhysicalDeviceProperties physicalDeviceProperties;
-    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-    VkSampleCountFlags counts =
-        physicalDeviceProperties.limits.framebufferColorSampleCounts &
-        physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-    if (counts & VK_SAMPLE_COUNT_64_BIT) {
-      return VK_SAMPLE_COUNT_64_BIT;
-    }
-    if (counts & VK_SAMPLE_COUNT_32_BIT) {
-      return VK_SAMPLE_COUNT_32_BIT;
-    }
-    if (counts & VK_SAMPLE_COUNT_16_BIT) {
-      return VK_SAMPLE_COUNT_16_BIT;
-    }
-    if (counts & VK_SAMPLE_COUNT_8_BIT) {
-      return VK_SAMPLE_COUNT_8_BIT;
-    }
-    if (counts & VK_SAMPLE_COUNT_4_BIT) {
-      return VK_SAMPLE_COUNT_4_BIT;
-    }
-    if (counts & VK_SAMPLE_COUNT_2_BIT) {
-      return VK_SAMPLE_COUNT_2_BIT;
-    }
-    return VK_SAMPLE_COUNT_1_BIT;
   }
 
   void mainLoop() {
