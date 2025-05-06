@@ -1,7 +1,24 @@
 #include "image.hpp"
 
-#include "../engine.hpp"
 #include "../common.hpp"
+#include "../engine.hpp"
+#include <vulkan/vulkan_core.h>
+
+Image::Image(int width, int height, VkFormat format, VkImageUsageFlagBits usage,
+             int mipLevels, VkSampleCountFlagBits msaaSamples,
+             VkImageAspectFlagBits flags) {
+  auto w = static_cast<uint32_t>(width);
+  auto h = static_cast<uint32_t>(height);
+  createImage(w, h, mipLevels, msaaSamples, format, VK_IMAGE_TILING_OPTIMAL,
+              usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+  view = createImageView(image, format, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+}
+
+Image::~Image() {
+  vkDestroyImage(Engine::device, image, allocator);
+  vkDestroyImageView(Engine::device, view, allocator);
+  vkFreeMemory(Engine::device, memory, allocator);
+}
 
 void Image::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
                         VkSampleCountFlagBits numSamples, VkFormat format,
@@ -39,16 +56,26 @@ void Image::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
           memoryRequirements.memoryTypeBits, properties),
   };
 
-  CHK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory),
+  CHK(vkAllocateMemory(Engine::device, &allocInfo, nullptr, &imageMemory),
       "failed to allocate image memory")
 
-  vkBindImageMemory(device, image, imageMemory, 0);
+  vkBindImageMemory(Engine::device, image, imageMemory, 0);
+}
+
+bool Image::hasStencilComponent(VkFormat format) {
+  return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+         format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+uint32_t Image::calculateMipLevels(int width, int height) {
+  return 1 +
+         static_cast<uint32_t>(std::floor(std::log2(std::max(width, height))));
 }
 
 void Image::transitionImageLayout(VkImage image, VkFormat format,
                                   VkImageLayout oldLayout,
                                   VkImageLayout newLayout, uint32_t mipLevels) {
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+  VkCommandBuffer commandBuffer = Engine::beginCommand();
 
   VkImageMemoryBarrier barrier{
       .sType = STYPE(IMAGE_MEMORY_BARRIER),
@@ -73,7 +100,7 @@ void Image::transitionImageLayout(VkImage image, VkFormat format,
   if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    if (hasStencilComponent(format)) {
+    if (Image::hasStencilComponent(format)) {
       barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
   } else {
@@ -109,13 +136,13 @@ void Image::transitionImageLayout(VkImage image, VkFormat format,
   vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
                        nullptr, 1, &barrier);
 
-  endSingleTimeCommands(commandBuffer);
+  Engine::endCommand(commandBuffer, Engine::graphicsQueue);
 }
 
 void Image::generateMipmaps(VkImage image, VkFormat imageFormat, uint32_t width,
                             uint32_t height, uint32_t mipLevels) {
   VkFormatProperties formatProperties;
-  vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat,
+  vkGetPhysicalDeviceFormatProperties(Engine::gpu, imageFormat,
                                       &formatProperties);
 
   if (!(formatProperties.optimalTilingFeatures &
@@ -124,7 +151,7 @@ void Image::generateMipmaps(VkImage image, VkFormat imageFormat, uint32_t width,
         "texture image format does not support linear blitting");
   }
 
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+  VkCommandBuffer commandBuffer = Engine::beginCommand();
 
   VkImageMemoryBarrier barrier{
       .sType = STYPE(IMAGE_MEMORY_BARRIER),
@@ -216,13 +243,12 @@ void Image::generateMipmaps(VkImage image, VkFormat imageFormat, uint32_t width,
                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
                        nullptr, 1, &barrier);
 
-  endSingleTimeCommands(commandBuffer);
+  Engine::endCommand(commandBuffer, Engine::graphicsQueue);
 }
 
 void Image::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
                               uint32_t height) {
-  auto commandBuffer =
-      beginSingleTimeCommands(Engine::device, Engine::commandPool);
+  auto commandBuffer = Engine::beginCommand();
 
   VkBufferImageCopy region{
       .bufferOffset = 0,
@@ -242,6 +268,5 @@ void Image::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
   vkCmdCopyBufferToImage(commandBuffer, buffer, image,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-  endSingleTimeCommands(Engine::device, Engine::commandPool, commandBuffer,
-                        Engine::graphicsQueue);
+  Engine::endCommand(commandBuffer, Engine::graphicsQueue);
 }

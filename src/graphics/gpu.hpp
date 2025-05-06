@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -26,7 +27,7 @@ public:
 
   const QueueFamilyIndices queueFamilyIndices;
   const SwapchainSupportDetails swapchainSupportDetails;
-  const VkSampleCountFlagBits maxSamples;
+  const VkSampleCountFlagBits msaaSamples;
 
   GPU(VkPhysicalDevice device);
   ~GPU();
@@ -36,6 +37,10 @@ public:
   int rateSuitability();
   uint32_t findMemoryType(uint32_t typeFilter,
                           VkMemoryPropertyFlags properties);
+
+  VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
+                               VkImageTiling tiling,
+                               VkFormatFeatureFlags features);
 
 private:
   const VkPhysicalDevice device;

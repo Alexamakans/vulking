@@ -1,7 +1,7 @@
 #pragma once
 
-#include "gpu.hpp"
 #include "framebuffer.hpp"
+#include "gpu.hpp"
 #include <vulkan/vulkan_core.h>
 
 class Swapchain {
@@ -11,8 +11,7 @@ public:
   VkExtent2D extent;
   VkPresentModeKHR presentMode;
 
-  Swapchain(int width, int height, GPU::SwapchainSupportDetails supportDetails,
-            VkSurfaceKHR surface);
+  Swapchain(int width, int height);
   ~Swapchain();
 
   operator VkSwapchainKHR() const { return swapchain; }

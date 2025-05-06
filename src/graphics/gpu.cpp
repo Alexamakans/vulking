@@ -7,7 +7,7 @@
 GPU::GPU(VkPhysicalDevice device)
     : device(device), queueFamilyIndices(getQueueFamilyIndices()),
       swapchainSupportDetails(getSwapchainSupportDetails()),
-      maxSamples(getMaxUsableSampleCount()) {}
+      msaaSamples(getMaxUsableSampleCount()) {}
 
 GPU::~GPU() {};
 
@@ -182,4 +182,25 @@ uint32_t GPU::findMemoryType(uint32_t typeFilter,
   }
 
   throw std::runtime_error("failed to find suitable memory type");
+}
+
+VkFormat GPU::findSupportedFormat(const std::vector<VkFormat> &candidates,
+                                  VkImageTiling tiling,
+                                  VkFormatFeatureFlags features) {
+  for (VkFormat format : candidates) {
+    VkFormatProperties properties;
+    vkGetPhysicalDeviceFormatProperties(device, format, &properties);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR &&
+        (properties.linearTilingFeatures & features) == features) {
+      return format;
+    }
+
+    if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+        (properties.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  throw std::runtime_error("failed to find supported format");
 }

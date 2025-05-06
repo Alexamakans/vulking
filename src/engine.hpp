@@ -2,7 +2,6 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_core.h>
 
-#include "common.hpp"
 #include "debug_messenger.hpp"
 #include "graphics/gpu.hpp"
 #include "graphics/logical_device.hpp"
@@ -25,6 +24,9 @@ public:
   Engine(GLFWwindow *window);
   void init();
   ~Engine();
+
+  static VkCommandBuffer beginCommand();
+  static void endCommand(VkCommandBuffer commandBuffer, VkQueue queue);
 
 private:
   void createInstance();

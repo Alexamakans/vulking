@@ -2,10 +2,9 @@
 #include "../common.hpp"
 #include "../engine.hpp"
 
-Swapchain::Swapchain(int width, int height,
-                     GPU::SwapchainSupportDetails supportDetails,
-                     VkSurfaceKHR surface)
-    : surface(surface), supportDetails(supportDetails),
+Swapchain::Swapchain(int width, int height)
+    : surface(Engine::surface),
+      supportDetails(Engine::gpu.swapchainSupportDetails),
       extent(chooseExtent(width, height, supportDetails.capabilities)),
       format(chooseFormat(supportDetails.formats)),
       presentMode(choosePresentMode(supportDetails.presentModes)) {
@@ -51,10 +50,15 @@ Swapchain::Swapchain(int width, int height,
   CHK(vkCreateSwapchainKHR(Engine::device, &createInfo, nullptr, &swapchain),
       "failed to create swap chain")
 
+  std::vector<VkImage> images;
   vkGetSwapchainImagesKHR(Engine::device, swapchain, &imageCount, nullptr);
   images.resize(imageCount);
   vkGetSwapchainImagesKHR(Engine::device, swapchain, &imageCount,
                           images.data());
+
+  framebuffers.resize(imageCount);
+  for (size_t i = 0; i < imageCount; i++) {
+  }
 };
 
 Swapchain::~Swapchain() {

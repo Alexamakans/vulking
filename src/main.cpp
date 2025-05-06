@@ -947,43 +947,6 @@ private:
                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
   }
 
-  VkFormat findDepthFormat() {
-    return findSupportedFormat(
-        {
-            VK_FORMAT_D32_SFLOAT,
-            VK_FORMAT_D32_SFLOAT_S8_UINT,
-            VK_FORMAT_D24_UNORM_S8_UINT,
-        },
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-  }
-
-  bool hasStencilComponent(VkFormat format) {
-    return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-           format == VK_FORMAT_D24_UNORM_S8_UINT;
-  }
-
-  VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
-                               VkImageTiling tiling,
-                               VkFormatFeatureFlags features) {
-    for (VkFormat format : candidates) {
-      VkFormatProperties properties;
-      vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
-
-      if (tiling == VK_IMAGE_TILING_LINEAR &&
-          (properties.linearTilingFeatures & features) == features) {
-        return format;
-      }
-
-      if (tiling == VK_IMAGE_TILING_OPTIMAL &&
-          (properties.optimalTilingFeatures & features) == features) {
-        return format;
-      }
-    }
-
-    throw std::runtime_error("failed to find supported format");
-  }
-
   void createTextureImage() {
     int width, height, channels;
     stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &width, &height,
