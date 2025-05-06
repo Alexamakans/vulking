@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gpu.hpp"
+#include "framebuffer.hpp"
 #include <vulkan/vulkan_core.h>
 
 class Swapchain {
@@ -10,14 +11,16 @@ public:
   VkExtent2D extent;
   VkPresentModeKHR presentMode;
 
-  Swapchain(VkDevice device, int width, int height,
-            GPU::SwapchainSupportDetails supportDetails, VkSurfaceKHR surface);
+  Swapchain(int width, int height, GPU::SwapchainSupportDetails supportDetails,
+            VkSurfaceKHR surface);
   ~Swapchain();
 
+  operator VkSwapchainKHR() const { return swapchain; }
+
 private:
-  VkDevice device;
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
+  std::vector<Framebuffer> framebuffers;
 
   VkSurfaceFormatKHR
   chooseFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);

@@ -27,16 +27,19 @@ public:
   const QueueFamilyIndices queueFamilyIndices;
   const SwapchainSupportDetails swapchainSupportDetails;
   const VkSampleCountFlagBits maxSamples;
-  const VkPhysicalDevice device;
 
   GPU(VkPhysicalDevice device);
   ~GPU();
+
+  operator VkPhysicalDevice() const { return device; }
 
   int rateSuitability();
   uint32_t findMemoryType(uint32_t typeFilter,
                           VkMemoryPropertyFlags properties);
 
 private:
+  const VkPhysicalDevice device;
+
   QueueFamilyIndices getQueueFamilyIndices();
   bool checkDeviceExtensionSupport();
   SwapchainSupportDetails getSwapchainSupportDetails();

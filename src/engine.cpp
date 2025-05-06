@@ -1,4 +1,3 @@
-#include <set>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <map>
@@ -7,13 +6,10 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_funcs.hpp>
 
-#include "common.hpp"
 #include "engine.hpp"
 #include "graphics/gpu.hpp"
-
-#ifndef ENABLE_SAMPLE_SHADING
-#define ENABLE_SAMPLE_SHADING false
-#endif
+#include "graphics/logical_device.hpp"
+#include "graphics/swapchain.hpp"
 
 Engine::Engine(GLFWwindow *window) { Engine::window = window; };
 
@@ -28,6 +24,7 @@ void Engine::init() {
 }
 
 Engine::~Engine() {
+  std::destroy_at(&Engine::device);
   std::destroy_at(&Engine::gpu);
   if (enableValidationLayers) {
     std::destroy_at(&debugMessenger);
@@ -73,7 +70,7 @@ void Engine::createInstance() {
     createInfo.enabledLayerCount = 0;
   }
 
-  CHK(vkCreateInstance(&createInfo, nullptr, &instance),
+  CHK(vkCreateInstance(&createInfo, allocator, &instance),
       "failed to create instance")
 }
 
@@ -125,56 +122,8 @@ void Engine::pickGPU() {
   }
 }
 
-void Engine::createDevice() {
-  GPU::QueueFamilyIndices indices = Engine::gpu.queueFamilyIndices;
-  std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-  std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
-                                            indices.presentFamily.value()};
-
-  float queuePriority = 1.0f;
-  for (uint32_t queueFamily : uniqueQueueFamilies) {
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = STYPE(DEVICE_QUEUE_CREATE_INFO);
-    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-    queueCreateInfo.queueCount = 1;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
-
-    queueCreateInfos.push_back(queueCreateInfo);
-  }
-
-  VkPhysicalDeviceFeatures deviceFeatures{
-      .sampleRateShading = ENABLE_SAMPLE_SHADING ? VK_TRUE : VK_FALSE,
-      .samplerAnisotropy = VK_TRUE,
-  };
-
-  VkDeviceCreateInfo createInfo{};
-  createInfo.sType = STYPE(DEVICE_CREATE_INFO);
-  createInfo.pQueueCreateInfos = queueCreateInfos.data();
-  createInfo.queueCreateInfoCount =
-      static_cast<uint32_t>(queueCreateInfos.size());
-
-  createInfo.pEnabledFeatures = &deviceFeatures;
-
-  createInfo.enabledExtensionCount =
-      static_cast<uint32_t>(deviceExtensions.size());
-  createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-  if (enableValidationLayers) {
-    createInfo.enabledLayerCount =
-        static_cast<uint32_t>(validationLayers.size());
-    createInfo.ppEnabledLayerNames = validationLayers.data();
-  } else {
-    createInfo.enabledLayerCount = 0;
-  }
-
-  CHK(vkCreateDevice(Engine::gpu.device, &createInfo, nullptr, &device),
-      "failed to create logical device")
-
-  vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0,
-                   &Engine::graphicsQueue);
-  vkGetDeviceQueue(device, indices.presentFamily.value(), 0,
-                   &Engine::presentQueue);
+void Engine::createLogicalDevice() {
+  new (&Engine::device) LogicalDevice(gpu, surface);
 }
 
-void Engine::createSwapchain() {
-}
+void Engine::createSwapchain() { new (&Engine::swapchain) Swapchain(); }

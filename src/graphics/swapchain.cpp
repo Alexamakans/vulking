@@ -2,7 +2,7 @@
 #include "../common.hpp"
 #include "../engine.hpp"
 
-Swapchain::Swapchain(VkDevice device, int width, int height,
+Swapchain::Swapchain(int width, int height,
                      GPU::SwapchainSupportDetails supportDetails,
                      VkSurfaceKHR surface)
     : surface(surface), supportDetails(supportDetails),
@@ -48,16 +48,19 @@ Swapchain::Swapchain(VkDevice device, int width, int height,
 
   createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-  CHK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &Engine::swapchain),
+  CHK(vkCreateSwapchainKHR(Engine::device, &createInfo, nullptr, &swapchain),
       "failed to create swap chain")
 
-  vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
+  vkGetSwapchainImagesKHR(Engine::device, swapchain, &imageCount, nullptr);
   images.resize(imageCount);
-  vkGetSwapchainImagesKHR(device, swapchain, &imageCount, images.data());
+  vkGetSwapchainImagesKHR(Engine::device, swapchain, &imageCount,
+                          images.data());
 };
+
 Swapchain::~Swapchain() {
-  vkDestroySwapchainKHR(device, swapchain, allocator);
+  vkDestroySwapchainKHR(Engine::device, swapchain, allocator);
 };
+
 VkSurfaceFormatKHR Swapchain::chooseFormat(
     const std::vector<VkSurfaceFormatKHR> &availableFormats) {
   for (const auto &availableFormat : availableFormats) {
