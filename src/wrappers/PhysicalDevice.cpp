@@ -1,25 +1,28 @@
 #include "PhysicalDevice.hpp"
 
-PhysicalDevice::PhysicalDevice(VkInstance instance, Surface surface)
+Vulking::PhysicalDevice::PhysicalDevice(VkInstance instance, Surface surface)
     : instance(instance), surface(surface),
       physicalDevice(getSuitablePhysicalDevice()),
       queueFamilyIndices(getQueueFamilyIndices()) {}
 
-PhysicalDevice::operator VkPhysicalDevice() const { return physicalDevice; }
+Vulking::PhysicalDevice::operator VkPhysicalDevice() const {
+  return physicalDevice;
+}
 
-VkPhysicalDeviceProperties PhysicalDevice::getProperties() const {
+VkPhysicalDeviceProperties Vulking::PhysicalDevice::getProperties() const {
   VkPhysicalDeviceProperties props;
   vkGetPhysicalDeviceProperties(physicalDevice, &props);
   return props;
 }
 
-VkPhysicalDeviceFeatures PhysicalDevice::getFeatures() const {
+VkPhysicalDeviceFeatures Vulking::PhysicalDevice::getFeatures() const {
   VkPhysicalDeviceFeatures features;
   vkGetPhysicalDeviceFeatures(physicalDevice, &features);
   return features;
 }
 
-PhysicalDevice::QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() {
+Vulking::PhysicalDevice::QueueFamilyIndices
+Vulking::PhysicalDevice::getQueueFamilyIndices() {
   QueueFamilyIndices indices;
 
   uint32_t queueFamilyCount = 0;
@@ -51,27 +54,26 @@ PhysicalDevice::QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() {
   return indices;
 }
 
-void PhysicalDevice::getSuitablePhysicalDevice() {
+VkPhysicalDevice Vulking::PhysicalDevice::getSuitablePhysicalDevice() {
   uint32_t deviceCount = 0;
   vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
   if (deviceCount == 0) {
     throw std::runtime_error("Failed to find GPUs with Vulkan support.");
   }
 
-  std::vector<VkPhysicalDevice> devices(deviceCount);
-  vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+  std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
+  vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data());
 
-  for (const auto &dev : devices) {
-    if (isDeviceSuitable(dev)) {
-      physicalDevice = dev;
-      return;
+  for (const auto &physicalDevice : physicalDevices) {
+    if (isDeviceSuitable(physicalDevice)) {
+      return physicalDevice;
     }
   }
 
   throw std::runtime_error("Failed to find a suitable GPU.");
 }
 
-bool PhysicalDevice::isDeviceSuitable(VkPhysicalDevice dev) const {
+bool Vulking::PhysicalDevice::isDeviceSuitable(VkPhysicalDevice dev) const {
   // This should be extended based on required features, extensions, and queue
   // families.
   VkPhysicalDeviceProperties props;
@@ -81,9 +83,8 @@ bool PhysicalDevice::isDeviceSuitable(VkPhysicalDevice dev) const {
          props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
-uint32_t
-PhysicalDevice::findMemoryType(uint32_t typeFilter,
-                               VkMemoryPropertyFlags properties) const {
+uint32_t Vulking::PhysicalDevice::findMemoryType(
+    uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
   VkPhysicalDeviceMemoryProperties memProperties;
   vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 

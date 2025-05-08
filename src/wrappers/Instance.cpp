@@ -1,5 +1,8 @@
 #include "Instance.hpp"
 
+const std::vector<const char *> validationLayers = {
+    "VK_LAYER_KHRONOS_validation"};
+
 Vulking::Instance::Instance(bool enableValidation)
     : validationEnabled(enableValidation) {
   if (validationEnabled && !checkValidationLayerSupport()) {

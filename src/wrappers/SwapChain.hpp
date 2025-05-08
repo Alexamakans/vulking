@@ -1,16 +1,18 @@
 #pragma once
 #include "../common.hpp"
 #include "Device.hpp"
-#include "GPU.hpp"
 #include "Image.hpp"
+#include "PhysicalDevice.hpp"
 #include "Surface.hpp"
 #include <optional>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 namespace Vulking {
 class SwapChain {
 public:
-  SwapChain(GPU gpu, Surface surface);
+  SwapChain() = default;
+  SwapChain(PhysicalDevice physicalDevice, Device device, Surface surface);
   ~SwapChain();
 
   operator VkSwapchainKHR() const;
@@ -20,13 +22,15 @@ public:
   VkExtent2D getExtent() const;
 
 private:
+  PhysicalDevice physicalDevice;
   Device device;
-  VkSwapchainKHR swapChain{};
   Surface surface;
+
+  VkSwapchainKHR swapChain{};
   VkFormat swapChainImageFormat;
   VkExtent2D swapChainExtent;
-  std::vector<Image> swapChainImages;
+  std::vector<VkImage> swapChainImages;
 
-  void createSwapChain(GPU gpu, Surface surface);
+  VkSwapchainKHR createSwapChain();
 };
 } // namespace Vulking

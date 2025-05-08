@@ -6,12 +6,14 @@
 namespace Vulking {
 class Surface {
 public:
+  Surface() = default;
   Surface(Instance instance, VkSurfaceKHR surface);
+  Surface(Surface&) = default;
   operator VkSurfaceKHR() const;
   ~Surface();
 
 private:
   Instance instance;
-  VkSurfaceKHR surface;
+  VkSurfaceKHR surface{};
 };
 } // namespace Vulking

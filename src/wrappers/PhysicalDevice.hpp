@@ -19,6 +19,8 @@ public:
 
   const QueueFamilyIndices queueFamilyIndices{};
 
+  PhysicalDevice() = default;
+  PhysicalDevice(PhysicalDevice&) = default;
   explicit PhysicalDevice(VkInstance instance, Surface surface);
   operator VkPhysicalDevice() const;
 
@@ -33,7 +35,7 @@ private:
   VkPhysicalDevice physicalDevice{};
 
   QueueFamilyIndices getQueueFamilyIndices();
-  void getSuitablePhysicalDevice();
+  VkPhysicalDevice getSuitablePhysicalDevice();
   bool isDeviceSuitable(VkPhysicalDevice dev) const;
 };
 } // namespace Vulking

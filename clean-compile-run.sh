@@ -2,8 +2,8 @@
 
 set -e
 
-echo "Installing dependencies"
-sudo dnf install vulkan vulkan-headers vulkan-loader-devel glfw-devel glm-devel vulkan-validation-layers glslc
+# echo "Installing dependencies"
+# sudo dnf install vulkan vulkan-headers vulkan-loader-devel glfw-devel glm-devel vulkan-validation-layers glslc
 
 mkdir -p assets/shaders
 pushd assets/shaders

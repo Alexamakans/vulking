@@ -1,9 +1,11 @@
 #include "SwapChain.hpp"
+#include "Queue.hpp"
+#include <vulkan/vulkan_core.h>
 
-Vulking::SwapChain::SwapChain(Device device, Surface surface)
-    : device(device), surface(surface) {
-  createSwapChain(device, surface);
-}
+Vulking::SwapChain::SwapChain(PhysicalDevice physicalDevice, Device device,
+                              Surface surface)
+    : physicalDevice(physicalDevice), device(device), surface(surface),
+      swapChain(createSwapChain()) {}
 
 Vulking::SwapChain::~SwapChain() {
   if (swapChain) {
@@ -23,16 +25,18 @@ VkFormat Vulking::SwapChain::getImageFormat() const {
 
 VkExtent2D Vulking::SwapChain::getExtent() const { return swapChainExtent; }
 
-void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
+VkSwapchainKHR Vulking::SwapChain::createSwapChain() {
   // Get surface capabilities
   VkSurfaceCapabilitiesKHR capabilities;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu, surface, &capabilities);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
+                                            &capabilities);
 
   // Get surface formats
   uint32_t formatCount = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, nullptr);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
+                                       nullptr);
   std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount,
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
                                        surfaceFormats.data());
 
   VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
@@ -40,11 +44,11 @@ void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
 
   // Get surface present modes
   uint32_t presentModeCount = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, surface, &presentModeCount,
-                                            nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
+                                            &presentModeCount, nullptr);
   std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, surface, &presentModeCount,
-                                            presentModes.data());
+  vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physicalDevice, surface, &presentModeCount, presentModes.data());
 
   // Choose present mode (FIFO is guaranteed to be supported)
   VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -62,11 +66,14 @@ void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-  Queue graphicsQueue(device, device.getGraphicsQueueFamily());
-  uint32_t indices[] = {device.getGraphicsQueueFamily(),
-                        device.getPresentQueueFamily()};
+  const auto graphicsFamily =
+      physicalDevice.queueFamilyIndices.graphicsFamily.value();
+  const auto presentFamily =
+      physicalDevice.queueFamilyIndices.presentFamily.value();
+  Queue graphicsQueue(device, graphicsFamily);
+  uint32_t indices[] = {graphicsFamily, presentFamily};
 
-  if (device.getGraphicsQueueFamily() != device.getPresentQueueFamily()) {
+  if (graphicsFamily != presentFamily) {
     createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
     createInfo.queueFamilyIndexCount = 2;
     createInfo.pQueueFamilyIndices = indices;
@@ -82,6 +89,7 @@ void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
   createInfo.clipped = VK_TRUE;
   createInfo.oldSwapchain = VK_NULL_HANDLE;
 
+  VkSwapchainKHR swapChain;
   CHK(vkCreateSwapchainKHR(device, &createInfo, allocator, &swapChain),
       "Failed to create swap chain.");
 
@@ -91,4 +99,6 @@ void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
   swapChainImages.resize(imageCount);
   vkGetSwapchainImagesKHR(device, swapChain, &imageCount,
                           swapChainImages.data());
+
+  return swapChain;
 }

@@ -2,10 +2,12 @@
 #include "../common.hpp"
 #include <vector>
 
+
 namespace Vulking {
 class Instance {
 public:
   explicit Instance(bool enableValidation = enableValidationLayers);
+  Instance(Instance &) = default;
   ~Instance();
 
   operator VkInstance() const;
@@ -17,8 +19,5 @@ private:
   void createInstance();
   std::vector<const char *> getRequiredExtensions() const;
   bool checkValidationLayerSupport() const;
-
-  const std::vector<const char *> validationLayers = {
-      "VK_LAYER_KHRONOS_validation"};
 };
 } // namespace Vulking

@@ -6,6 +6,8 @@
 namespace Vulking {
 class Queue {
 public:
+  Queue() = default;
+  Queue(Queue&) = default;
   Queue(Device device, uint32_t queueFamilyIndex);
   ~Queue();
 
