@@ -3,9 +3,10 @@
 #include "Instance.hpp"
 #include <vulkan/vulkan_core.h>
 
+namespace Vulking {
 class Surface {
 public:
-  Surface(const Instance &instance, VkSurfaceKHR surface);
+  Surface(Instance instance, VkSurfaceKHR surface);
   operator VkSurfaceKHR() const;
   ~Surface();
 
@@ -13,3 +14,4 @@ private:
   Instance instance;
   VkSurfaceKHR surface;
 };
+} // namespace Vulking

@@ -1,6 +1,6 @@
 #include "Instance.hpp"
 
-Instance::Instance(bool enableValidation)
+Vulking::Instance::Instance(bool enableValidation)
     : validationEnabled(enableValidation) {
   if (validationEnabled && !checkValidationLayerSupport()) {
     throw std::runtime_error("Validation layers requested, but not available.");
@@ -8,15 +8,15 @@ Instance::Instance(bool enableValidation)
   createInstance();
 }
 
-Instance::~Instance() {
+Vulking::Instance::~Instance() {
   if (instance) {
     vkDestroyInstance(instance, allocator);
   }
 }
 
-Instance::operator VkInstance() const { return instance; }
+Vulking::Instance::operator VkInstance() const { return instance; }
 
-void Instance::createInstance() {
+void Vulking::Instance::createInstance() {
   VkApplicationInfo appInfo{};
   appInfo.sType = STYPE(APPLICATION_INFO);
   appInfo.pApplicationName = "Vulkan App";
@@ -46,7 +46,7 @@ void Instance::createInstance() {
       "Failed to create Vulkan instance.");
 }
 
-std::vector<const char *> Instance::getRequiredExtensions() const {
+std::vector<const char *> Vulking::Instance::getRequiredExtensions() const {
   std::vector<const char *> extensions = {
       "VK_KHR_surface" // Platform-specific surface extensions should be
                        // appended elsewhere
@@ -59,7 +59,7 @@ std::vector<const char *> Instance::getRequiredExtensions() const {
   return extensions;
 }
 
-bool Instance::checkValidationLayerSupport() const {
+bool Vulking::Instance::checkValidationLayerSupport() const {
   uint32_t layerCount;
   vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 

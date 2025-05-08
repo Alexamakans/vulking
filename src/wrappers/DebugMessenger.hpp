@@ -1,6 +1,7 @@
 #pragma once
-#include "common.hpp"
+#include "../common.hpp"
 
+namespace Vulking {
 class DebugMessenger {
 public:
   DebugMessenger(VkInstance instance);
@@ -19,3 +20,4 @@ private:
                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                 void *pUserData);
 };
+} // namespace Vulking

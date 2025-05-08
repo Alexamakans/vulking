@@ -1,15 +1,16 @@
 #pragma once
+#include "../common.hpp"
 #include "Device.hpp"
+#include "GPU.hpp"
 #include "Image.hpp"
-#include "Queue.hpp"
 #include "Surface.hpp"
-#include "common.hpp"
 #include <optional>
 #include <vector>
 
+namespace Vulking {
 class SwapChain {
 public:
-  SwapChain(const Device &deviceInfo);
+  SwapChain(GPU gpu, Surface surface);
   ~SwapChain();
 
   operator VkSwapchainKHR() const;
@@ -26,5 +27,6 @@ private:
   VkExtent2D swapChainExtent;
   std::vector<Image> swapChainImages;
 
-  void createSwapChain(const Device &deviceInfo, VkSurfaceKHR surface);
+  void createSwapChain(GPU gpu, Surface surface);
 };
+} // namespace Vulking

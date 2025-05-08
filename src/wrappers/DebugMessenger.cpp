@@ -1,12 +1,12 @@
 #include "DebugMessenger.hpp"
 
-DebugMessenger::DebugMessenger(VkInstance inst) : instance(inst) {
+Vulking::DebugMessenger::DebugMessenger(VkInstance inst) : instance(inst) {
   if (enableValidationLayers) {
     createDebugMessenger();
   }
 }
 
-DebugMessenger::~DebugMessenger() {
+Vulking::DebugMessenger::~DebugMessenger() {
   if (enableValidationLayers && messenger) {
     auto destroyFn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
@@ -16,9 +16,9 @@ DebugMessenger::~DebugMessenger() {
   }
 }
 
-DebugMessenger::operator VkDebugUtilsMessengerEXT() const { return messenger; }
+Vulking::DebugMessenger::operator VkDebugUtilsMessengerEXT() const { return messenger; }
 
-void DebugMessenger::createDebugMessenger() {
+void Vulking::DebugMessenger::createDebugMessenger() {
   VkDebugUtilsMessengerCreateInfoEXT createInfo{};
   createInfo.sType = STYPE(DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
   createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -43,7 +43,7 @@ void DebugMessenger::createDebugMessenger() {
       "Failed to set up debug messenger.");
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::debugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL Vulking::DebugMessenger::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT,
     const VkDebugUtilsMessengerCallbackDataEXT *callbackData, void *) {

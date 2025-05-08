@@ -1,7 +1,8 @@
 #pragma once
-#include "common.hpp"
+#include "../common.hpp"
 #include <vector>
 
+namespace Vulking {
 class Instance {
 public:
   explicit Instance(bool enableValidation = enableValidationLayers);
@@ -20,3 +21,4 @@ private:
   const std::vector<const char *> validationLayers = {
       "VK_LAYER_KHRONOS_validation"};
 };
+} // namespace Vulking

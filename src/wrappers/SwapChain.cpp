@@ -1,49 +1,49 @@
 #include "SwapChain.hpp"
 
-SwapChain::SwapChain(VkDevice dev, VkSurfaceKHR surf, const Device &device)
-    : device(dev), surface(surf) {
+Vulking::SwapChain::SwapChain(Device device, Surface surface)
+    : device(device), surface(surface) {
   createSwapChain(device, surface);
 }
 
-SwapChain::~SwapChain() {
+Vulking::SwapChain::~SwapChain() {
   if (swapChain) {
     vkDestroySwapchainKHR(device, swapChain, allocator);
   }
 }
 
-SwapChain::operator VkSwapchainKHR() const { return swapChain; }
+Vulking::SwapChain::operator VkSwapchainKHR() const { return swapChain; }
 
-const std::vector<VkImage> &SwapChain::getImages() const {
+const std::vector<VkImage> &Vulking::SwapChain::getImages() const {
   return swapChainImages;
 }
 
-VkFormat SwapChain::getImageFormat() const { return swapChainImageFormat; }
+VkFormat Vulking::SwapChain::getImageFormat() const {
+  return swapChainImageFormat;
+}
 
-VkExtent2D SwapChain::getExtent() const { return swapChainExtent; }
+VkExtent2D Vulking::SwapChain::getExtent() const { return swapChainExtent; }
 
-void SwapChain::createSwapChain(const Device &device, VkSurfaceKHR surface) {
+void Vulking::SwapChain::createSwapChain(GPU gpu, Surface surface) {
   // Get surface capabilities
   VkSurfaceCapabilitiesKHR capabilities;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
-                                            &capabilities);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu, surface, &capabilities);
 
   // Get surface formats
   uint32_t formatCount = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
-                                       &formatCount, nullptr);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, nullptr);
   std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
-                                       &formatCount, surfaceFormats.data());
+  vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount,
+                                       surfaceFormats.data());
 
   VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
   swapChainImageFormat = surfaceFormat.format;
 
   // Get surface present modes
   uint32_t presentModeCount = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
-                                            &presentModeCount, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, surface, &presentModeCount,
+                                            nullptr);
   std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount,
+  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, surface, &presentModeCount,
                                             presentModes.data());
 
   // Choose present mode (FIFO is guaranteed to be supported)
