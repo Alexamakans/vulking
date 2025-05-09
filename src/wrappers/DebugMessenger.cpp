@@ -52,3 +52,4 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Vulking::DebugMessenger::debugCallback(
   }
   return VK_FALSE;
 }
+Vulking::DebugMessenger::DebugMessenger() {};

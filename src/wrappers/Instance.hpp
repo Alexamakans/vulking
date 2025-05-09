@@ -6,7 +6,7 @@
 namespace Vulking {
 class Instance {
 public:
-  explicit Instance(bool enableValidation = enableValidationLayers);
+  Instance(bool enableValidation = enableValidationLayers);
   Instance(Instance &) = default;
   ~Instance();
 

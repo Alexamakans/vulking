@@ -9,9 +9,16 @@
 namespace Vulking {
 class GPU {
 public:
-  GPU() = default;
-  GPU(PhysicalDevice physicalDevice, Device device);
-  GPU(GPU&) = default;
+  GPU() {};
+  GPU(GPU &gpu) {
+    gpu.physicalDevice = physicalDevice;
+    gpu.device = device;
+    gpu.graphicsQueue = graphicsQueue;
+    gpu.presentQueue = presentQueue;
+    gpu.graphicsQueueFamily = graphicsQueueFamily;
+    gpu.presentQueueFamily = presentQueueFamily;
+  };
+  GPU(Instance instance, Surface surface);
 
   operator VkPhysicalDevice() const { return physicalDevice; }
   operator VkDevice() const { return device; }
@@ -20,11 +27,11 @@ public:
   uint32_t getPresentQueueFamily() const;
 
 private:
-  PhysicalDevice physicalDevice;
-  Device device;
+  PhysicalDevice physicalDevice{};
+  Device device{};
 
-  Queue graphicsQueue;
-  Queue presentQueue;
+  Queue graphicsQueue{};
+  Queue presentQueue{};
 
   uint32_t graphicsQueueFamily{};
   uint32_t presentQueueFamily{};

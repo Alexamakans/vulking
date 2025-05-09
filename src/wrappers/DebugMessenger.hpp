@@ -4,6 +4,7 @@
 namespace Vulking {
 class DebugMessenger {
 public:
+  DebugMessenger();
   DebugMessenger(VkInstance instance);
   ~DebugMessenger();
 

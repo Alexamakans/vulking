@@ -20,8 +20,15 @@ public:
   const QueueFamilyIndices queueFamilyIndices{};
 
   PhysicalDevice() = default;
-  PhysicalDevice(PhysicalDevice&) = default;
-  explicit PhysicalDevice(VkInstance instance, Surface surface);
+  PhysicalDevice(PhysicalDevice &) = default;
+  PhysicalDevice(VkInstance instance, Surface surface);
+
+  PhysicalDevice &operator=(const PhysicalDevice &other) {
+    instance = other.instance;
+    surface = other.surface;
+    physicalDevice = other.physicalDevice;
+    return *this;
+  }
   operator VkPhysicalDevice() const;
 
   uint32_t findMemoryType(uint32_t typeFilter,

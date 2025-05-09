@@ -1,7 +1,7 @@
 #include "GPU.hpp"
 
-Vulking::GPU::GPU(PhysicalDevice physicalDevice, Device device)
-    : physicalDevice(physicalDevice), device(device),
+Vulking::GPU::GPU(Instance instance, Surface surface)
+    : physicalDevice(PhysicalDevice(instance, surface)), device(physicalDevice),
       graphicsQueue(device, getGraphicsQueueFamily()),
       presentQueue(device, getPresentQueueFamily()) {}
 

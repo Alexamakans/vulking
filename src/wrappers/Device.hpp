@@ -8,10 +8,15 @@ namespace Vulking {
 class Device {
 public:
   Device() = default;
-  Device(Device&) = default;
+  Device(Device &) = default;
   Device(PhysicalDevice physicalDevice);
   ~Device();
 
+  Device &operator=(const Device &other) {
+    device = other.device;
+    physicalDevice = other.physicalDevice;
+    return *this;
+  }
   operator VkDevice() const;
 
 private:

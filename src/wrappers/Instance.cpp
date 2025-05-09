@@ -46,7 +46,7 @@ void Vulking::Instance::createInstance() {
   }
 
   CHK(vkCreateInstance(&createInfo, allocator, &instance),
-      "Failed to create Vulkan instance.");
+      "failed to create vulkan instance.");
 }
 
 std::vector<const char *> Vulking::Instance::getRequiredExtensions() const {

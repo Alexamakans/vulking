@@ -16,7 +16,7 @@ popd
 
 mkdir -p build
 pushd build
-rm -rf ./*
+#rm -rf ./*
 cmake -S .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 make
 popd

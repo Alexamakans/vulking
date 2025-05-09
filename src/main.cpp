@@ -1,5 +1,6 @@
 #include "devices/GPU.hpp"
 #include "wrappers/DebugMessenger.hpp"
+#include "wrappers/Device.hpp"
 #include "wrappers/Instance.hpp"
 #include "wrappers/Surface.hpp"
 #include "wrappers/SwapChain.hpp"
@@ -13,18 +14,16 @@ const int HEIGHT = 600;
 class MyApplication {
 public:
   GLFWwindow *window;
-  Vulking::Instance instance;
-  Vulking::DebugMessenger debugMessenger;
-  Vulking::Surface surface;
-  Vulking::GPU gpu;
-  Vulking::SwapChain swapChain;
+  Vulking::Instance instance{};
+  Vulking::DebugMessenger debugMessenger{};
+  Vulking::Surface surface{};
+  Vulking::GPU gpu{};
+  Vulking::SwapChain swapChain{};
 
-  MyApplication()
-      : window(createWindow()), instance(true), debugMessenger(instance) {
-    VkSurfaceKHR surface;
-    glfwCreateWindowSurface(instance, window, allocator, &surface);
-    this->surface = Vulking::Surface(instance, surface);
-    gpu = Vulking::GPU();
+  MyApplication() {}
+
+  void run() {
+    init();
   }
 
 private:
@@ -37,6 +36,17 @@ private:
     glfwSetWindowUserPointer(window, this);
     // glfwSetFramebufferSizeCallback(window, onFramebufferResize);
     return window;
+  }
+
+  void init() {
+    window = createWindow();
+    instance = Vulking::Instance(true);
+    debugMessenger = Vulking::DebugMessenger(instance);
+    VkSurfaceKHR vkSurface;
+    CHK(glfwCreateWindowSurface(instance, window, allocator, &vkSurface),
+        "failed to create surface");
+    surface = Vulking::Surface(instance, vkSurface);
+    gpu = Vulking::GPU();
   }
 };
 

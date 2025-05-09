@@ -11,6 +11,11 @@ public:
   Queue(Device device, uint32_t queueFamilyIndex);
   ~Queue();
 
+  Queue& operator=(const Queue& other) {
+    device = other.device;
+    queue = other.queue;
+    return *this;
+  }
   operator VkQueue() const;
 
 private:

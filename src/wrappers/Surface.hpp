@@ -8,7 +8,12 @@ class Surface {
 public:
   Surface() = default;
   Surface(Instance instance, VkSurfaceKHR surface);
-  Surface(Surface&) = default;
+  Surface(Surface &) = default;
+  Surface &operator=(const Surface &other) {
+    instance = other.instance;
+    surface = other.surface;
+    return *this;
+  }
   operator VkSurfaceKHR() const;
   ~Surface();
 
