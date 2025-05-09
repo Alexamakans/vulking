@@ -1,25 +1,22 @@
 #include "Instance.hpp"
+#include <GLFW/glfw3.h>
 
 const std::vector<const char *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 
-Vulking::Instance::Instance(bool enableValidation)
-    : validationEnabled(enableValidation) {
+Vulking::Instance::Instance(const std::vector<const char *> &requiredExtensions,
+                            bool enableValidation)
+    : instance(createInstance(requiredExtensions)),
+      validationEnabled(enableValidation) {
   if (validationEnabled && !checkValidationLayerSupport()) {
     throw std::runtime_error("Validation layers requested, but not available.");
-  }
-  createInstance();
-}
-
-Vulking::Instance::~Instance() {
-  if (instance) {
-    vkDestroyInstance(instance, allocator);
   }
 }
 
 Vulking::Instance::operator VkInstance() const { return instance; }
 
-void Vulking::Instance::createInstance() {
+VkInstance Vulking::Instance::createInstance(
+    const std::vector<const char *> &requiredExtensions) {
   VkApplicationInfo appInfo{};
   appInfo.sType = STYPE(APPLICATION_INFO);
   appInfo.pApplicationName = "Vulkan App";
@@ -32,34 +29,14 @@ void Vulking::Instance::createInstance() {
   createInfo.sType = STYPE(INSTANCE_CREATE_INFO);
   createInfo.pApplicationInfo = &appInfo;
 
-  auto extensions = getRequiredExtensions();
-  createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-  createInfo.ppEnabledExtensionNames = extensions.data();
+  createInfo.enabledExtensionCount =
+      static_cast<uint32_t>(requiredExtensions.size());
+  createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
-  if (validationEnabled) {
-    createInfo.enabledLayerCount =
-        static_cast<uint32_t>(validationLayers.size());
-    createInfo.ppEnabledLayerNames = validationLayers.data();
-  } else {
-    createInfo.enabledLayerCount = 0;
-    createInfo.ppEnabledLayerNames = nullptr;
-  }
-
-  CHK(vkCreateInstance(&createInfo, allocator, &instance),
+  VkInstance vkInstance;
+  CHK(vkCreateInstance(&createInfo, allocator, &vkInstance),
       "failed to create vulkan instance.");
-}
-
-std::vector<const char *> Vulking::Instance::getRequiredExtensions() const {
-  std::vector<const char *> extensions = {
-      "VK_KHR_surface" // Platform-specific surface extensions should be
-                       // appended elsewhere
-  };
-
-#ifndef NDEBUG
-  extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
-
-  return extensions;
+  return vkInstance;
 }
 
 bool Vulking::Instance::checkValidationLayerSupport() const {

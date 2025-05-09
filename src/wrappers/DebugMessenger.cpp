@@ -1,12 +1,13 @@
 #include "DebugMessenger.hpp"
 
-Vulking::DebugMessenger::DebugMessenger(VkInstance inst) : instance(inst) {
+Vulking::DebugMessenger::DebugMessenger(const Instance &instance)
+    : instance(instance) {
   if (enableValidationLayers) {
     createDebugMessenger();
   }
 }
 
-Vulking::DebugMessenger::~DebugMessenger() {
+void Vulking::DebugMessenger::release() {
   if (enableValidationLayers && messenger) {
     auto destroyFn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
@@ -16,7 +17,9 @@ Vulking::DebugMessenger::~DebugMessenger() {
   }
 }
 
-Vulking::DebugMessenger::operator VkDebugUtilsMessengerEXT() const { return messenger; }
+Vulking::DebugMessenger::operator VkDebugUtilsMessengerEXT() const {
+  return messenger;
+}
 
 void Vulking::DebugMessenger::createDebugMessenger() {
   VkDebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -40,7 +43,7 @@ void Vulking::DebugMessenger::createDebugMessenger() {
   }
 
   CHK(createFn(instance, &createInfo, allocator, &messenger),
-      "Failed to set up debug messenger.");
+      "failed to set up debug messenger.");
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Vulking::DebugMessenger::debugCallback(
@@ -52,4 +55,3 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Vulking::DebugMessenger::debugCallback(
   }
   return VK_FALSE;
 }
-Vulking::DebugMessenger::DebugMessenger() {};

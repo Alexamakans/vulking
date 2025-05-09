@@ -1,7 +1,6 @@
 #pragma once
 #include "../common.hpp"
 #include "Device.hpp"
-#include "Image.hpp"
 #include "PhysicalDevice.hpp"
 #include "Surface.hpp"
 #include <optional>
@@ -11,25 +10,26 @@
 namespace Vulking {
 class SwapChain {
 public:
-  SwapChain() = default;
-  SwapChain(PhysicalDevice physicalDevice, Device device, Surface surface);
-  ~SwapChain();
-
+  SwapChain(const PhysicalDevice &physicalDevice, const Device &device,
+            const Surface &surface);
+  void release();
   operator VkSwapchainKHR() const;
 
   const std::vector<VkImage> &getImages() const;
-  VkFormat getImageFormat() const;
+  VkFormat getFormat() const;
   VkExtent2D getExtent() const;
 
+  void recreateSwapChain(int width, int height);
+
 private:
-  PhysicalDevice physicalDevice;
-  Device device;
-  Surface surface;
+  const PhysicalDevice &physicalDevice;
+  const Device &device;
+  const Surface &surface;
 
   VkSwapchainKHR swapChain{};
-  VkFormat swapChainImageFormat;
-  VkExtent2D swapChainExtent;
-  std::vector<VkImage> swapChainImages;
+  std::vector<VkImage> images{};
+  std::vector<VkImageView> imageViews{};
+  std::vector<VkFramebuffer> framebuffers{};
 
   VkSwapchainKHR createSwapChain();
 };

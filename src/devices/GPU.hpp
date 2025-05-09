@@ -5,20 +5,14 @@
 #include "../wrappers/Device.hpp"
 #include "../wrappers/PhysicalDevice.hpp"
 #include "../wrappers/Queue.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace Vulking {
 class GPU {
 public:
-  GPU() {};
-  GPU(GPU &gpu) {
-    gpu.physicalDevice = physicalDevice;
-    gpu.device = device;
-    gpu.graphicsQueue = graphicsQueue;
-    gpu.presentQueue = presentQueue;
-    gpu.graphicsQueueFamily = graphicsQueueFamily;
-    gpu.presentQueueFamily = presentQueueFamily;
-  };
-  GPU(Instance instance, Surface surface);
+  GPU(const Instance &instance, const Surface &surface);
+
+  void release() { device.release(); }
 
   operator VkPhysicalDevice() const { return physicalDevice; }
   operator VkDevice() const { return device; }
@@ -26,12 +20,15 @@ public:
   uint32_t getGraphicsQueueFamily() const;
   uint32_t getPresentQueueFamily() const;
 
-private:
-  PhysicalDevice physicalDevice{};
-  Device device{};
+  PhysicalDevice physicalDevice;
+  Device device;
 
-  Queue graphicsQueue{};
-  Queue presentQueue{};
+private:
+  const Instance &instance;
+  const Surface &surface;
+
+  const Queue graphicsQueue;
+  const Queue presentQueue;
 
   uint32_t graphicsQueueFamily{};
   uint32_t presentQueueFamily{};

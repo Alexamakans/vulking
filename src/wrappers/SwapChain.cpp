@@ -1,70 +1,40 @@
 #include "SwapChain.hpp"
 #include "Queue.hpp"
+#include <ios>
 #include <vulkan/vulkan_core.h>
 
-Vulking::SwapChain::SwapChain(PhysicalDevice physicalDevice, Device device,
-                              Surface surface)
+Vulking::SwapChain::SwapChain(const PhysicalDevice &physicalDevice,
+                              const Device &device, const Surface &surface)
     : physicalDevice(physicalDevice), device(device), surface(surface),
       swapChain(createSwapChain()) {}
-
-Vulking::SwapChain::~SwapChain() {
-  if (swapChain) {
-    vkDestroySwapchainKHR(device, swapChain, allocator);
-  }
-}
 
 Vulking::SwapChain::operator VkSwapchainKHR() const { return swapChain; }
 
 const std::vector<VkImage> &Vulking::SwapChain::getImages() const {
-  return swapChainImages;
+  return images;
 }
 
-VkFormat Vulking::SwapChain::getImageFormat() const {
-  return swapChainImageFormat;
+VkFormat Vulking::SwapChain::getFormat() const {
+  return physicalDevice.getFormat();
 }
 
-VkExtent2D Vulking::SwapChain::getExtent() const { return swapChainExtent; }
+VkExtent2D Vulking::SwapChain::getExtent() const {
+  return physicalDevice.getExtent();
+}
 
 VkSwapchainKHR Vulking::SwapChain::createSwapChain() {
-  // Get surface capabilities
-  VkSurfaceCapabilitiesKHR capabilities;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
-                                            &capabilities);
-
-  // Get surface formats
-  uint32_t formatCount = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
-                                       nullptr);
-  std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
-                                       surfaceFormats.data());
-
-  VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
-  swapChainImageFormat = surfaceFormat.format;
-
-  // Get surface present modes
-  uint32_t presentModeCount = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
-                                            &presentModeCount, nullptr);
-  std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physicalDevice, surface, &presentModeCount, presentModes.data());
-
-  // Choose present mode (FIFO is guaranteed to be supported)
-  VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-  // Choose swap chain extent (size of the swap chain)
-  swapChainExtent = capabilities.currentExtent;
-
   // Create the swap chain
   VkSwapchainCreateInfoKHR createInfo{};
   createInfo.sType = STYPE(SWAPCHAIN_CREATE_INFO_KHR);
   createInfo.surface = surface;
-  createInfo.minImageCount = capabilities.minImageCount + 1;
-  createInfo.imageFormat = swapChainImageFormat;
-  createInfo.imageExtent = swapChainExtent;
+  createInfo.imageFormat = getFormat();
+  createInfo.imageExtent = getExtent();
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  auto &caps = physicalDevice.getCapabilities();
+  createInfo.minImageCount =
+      std::min(caps.minImageCount + 1, caps.maxImageCount);
 
   const auto graphicsFamily =
       physicalDevice.queueFamilyIndices.graphicsFamily.value();
@@ -83,22 +53,55 @@ VkSwapchainKHR Vulking::SwapChain::createSwapChain() {
     createInfo.pQueueFamilyIndices = nullptr;
   }
 
-  createInfo.preTransform = capabilities.currentTransform;
+  createInfo.preTransform = physicalDevice.getCapabilities().currentTransform;
   createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  createInfo.presentMode = presentMode;
+  createInfo.presentMode = physicalDevice.getPresentMode();
   createInfo.clipped = VK_TRUE;
   createInfo.oldSwapchain = VK_NULL_HANDLE;
+#define A(x) std::cout << std::format("{}: ", #x) << createInfo.x << std::endl;
+  A(preTransform);
+  A(presentMode);
+  A(minImageCount);
+  A(imageExtent.width);
+  A(imageExtent.height);
+  A(sType);
+  A(surface);
+  std::cout << "imageFormat: " << std::hex << createInfo.imageFormat
+            << std::endl;
+  A(imageArrayLayers);
+  A(imageUsage);
+#undef A
 
-  VkSwapchainKHR swapChain;
+  VkSwapchainKHR swapChain{};
   CHK(vkCreateSwapchainKHR(device, &createInfo, allocator, &swapChain),
-      "Failed to create swap chain.");
+      "failed to create swap chain.");
 
   // Retrieve swap chain images
   uint32_t imageCount = 0;
-  vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-  swapChainImages.resize(imageCount);
-  vkGetSwapchainImagesKHR(device, swapChain, &imageCount,
-                          swapChainImages.data());
+  CHK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr),
+      "failed to get swapchain image count");
+  std::cout << "got num swap chain img: " << imageCount << std::endl;
+
+  std::cout << images.capacity() << std::endl;
+  images.resize(imageCount);
+  imageViews.resize(imageCount);
+  CHK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, images.data()),
+      "failed to get swapchain images");
 
   return swapChain;
+}
+void Vulking::SwapChain::release() {
+  for (auto framebuffer : framebuffers) {
+    vkDestroyFramebuffer(device, framebuffer, allocator);
+  }
+  for (auto imageView : imageViews) {
+    vkDestroyImageView(device, imageView, allocator);
+  }
+  vkDestroySwapchainKHR(device, swapChain, allocator);
+}
+
+void Vulking::SwapChain::recreateSwapChain(int width, int height) {
+  CHK(vkDeviceWaitIdle(device), "failed to wait for device to be idle");
+  release();
+  swapChain = createSwapChain();
 }

@@ -1,23 +1,22 @@
 #pragma once
 #include "../common.hpp"
 #include <vector>
-
+#include <vulkan/vulkan_core.h>
 
 namespace Vulking {
 class Instance {
 public:
-  Instance(bool enableValidation = enableValidationLayers);
-  Instance(Instance &) = default;
-  ~Instance();
-
+  Instance(const std::vector<const char *> &requiredExtensions,
+           bool enableValidation = enableValidationLayers);
+  void release() { vkDestroyInstance(instance, allocator); }
   operator VkInstance() const;
 
 private:
   VkInstance instance{};
-  bool validationEnabled;
+  bool validationEnabled{};
 
-  void createInstance();
-  std::vector<const char *> getRequiredExtensions() const;
+  VkInstance
+  createInstance(const std::vector<const char *> &requiredExtensions);
   bool checkValidationLayerSupport() const;
 };
 } // namespace Vulking

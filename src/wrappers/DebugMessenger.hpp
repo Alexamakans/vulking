@@ -1,17 +1,18 @@
 #pragma once
 #include "../common.hpp"
+#include "Instance.hpp"
 
 namespace Vulking {
 class DebugMessenger {
 public:
-  DebugMessenger();
-  DebugMessenger(VkInstance instance);
-  ~DebugMessenger();
+  DebugMessenger(const Instance& instance);
 
   operator VkDebugUtilsMessengerEXT() const;
 
+  void release();
+
 private:
-  VkInstance instance;
+  const Instance& instance;
   VkDebugUtilsMessengerEXT messenger{};
 
   void createDebugMessenger();

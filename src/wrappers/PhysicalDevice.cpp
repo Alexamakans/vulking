@@ -1,9 +1,12 @@
 #include "PhysicalDevice.hpp"
+#include <vulkan/vulkan_core.h>
 
-Vulking::PhysicalDevice::PhysicalDevice(VkInstance instance, Surface surface)
+Vulking::PhysicalDevice::PhysicalDevice(const Instance &instance,
+                                        const Surface &surface)
     : instance(instance), surface(surface),
-      physicalDevice(getSuitablePhysicalDevice()),
-      queueFamilyIndices(getQueueFamilyIndices()) {}
+      physicalDevice(getSuitablePhysicalDevice()) {
+  init();
+}
 
 Vulking::PhysicalDevice::operator VkPhysicalDevice() const {
   return physicalDevice;
@@ -58,7 +61,7 @@ VkPhysicalDevice Vulking::PhysicalDevice::getSuitablePhysicalDevice() {
   uint32_t deviceCount = 0;
   vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
   if (deviceCount == 0) {
-    throw std::runtime_error("Failed to find GPUs with Vulkan support.");
+    throw std::runtime_error("failed to find GPUs with Vulkan support.");
   }
 
   std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
@@ -70,7 +73,7 @@ VkPhysicalDevice Vulking::PhysicalDevice::getSuitablePhysicalDevice() {
     }
   }
 
-  throw std::runtime_error("Failed to find a suitable GPU.");
+  throw std::runtime_error("failed to find a suitable GPU.");
 }
 
 bool Vulking::PhysicalDevice::isDeviceSuitable(VkPhysicalDevice dev) const {
@@ -95,5 +98,74 @@ uint32_t Vulking::PhysicalDevice::findMemoryType(
     }
   }
 
-  throw std::runtime_error("Failed to find suitable memory type.");
+  throw std::runtime_error("failed to find suitable memory type.");
 }
+void Vulking::PhysicalDevice::init() {
+  msaaSamples = getMaxUsableMsaaSamples();
+
+  queueFamilyIndices = getQueueFamilyIndices();
+
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
+                                            &capabilities);
+  std::cout << "got min image count: " << capabilities.minImageCount
+            << std::endl;
+
+  uint32_t formatCount = 0;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
+                                       nullptr);
+  std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
+                                       surfaceFormats.data());
+
+  VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+  format = surfaceFormat.format;
+  extent = capabilities.currentExtent;
+
+  // Choose present mode (FIFO is guaranteed to be supported)
+  presentMode = VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkFormat Vulking::PhysicalDevice::getFormat() const { return format; }
+VkExtent2D Vulking::PhysicalDevice::getExtent() const { return extent; }
+
+const VkSurfaceCapabilitiesKHR &
+Vulking::PhysicalDevice::getCapabilities() const {
+  return capabilities;
+}
+
+VkPresentModeKHR Vulking::PhysicalDevice::getPresentMode() const {
+  return presentMode;
+}
+VkSampleCountFlagBits Vulking::PhysicalDevice::getMsaaSamples() const {
+  return msaaSamples;
+}
+
+VkSampleCountFlagBits Vulking::PhysicalDevice::getMaxUsableMsaaSamples() const {
+  VkPhysicalDeviceProperties physicalDeviceProperties;
+  vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+  VkSampleCountFlags counts =
+      physicalDeviceProperties.limits.framebufferColorSampleCounts &
+      physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+  if (counts & VK_SAMPLE_COUNT_64_BIT) {
+    return VK_SAMPLE_COUNT_64_BIT;
+  }
+  if (counts & VK_SAMPLE_COUNT_32_BIT) {
+    return VK_SAMPLE_COUNT_32_BIT;
+  }
+  if (counts & VK_SAMPLE_COUNT_16_BIT) {
+    return VK_SAMPLE_COUNT_16_BIT;
+  }
+  if (counts & VK_SAMPLE_COUNT_8_BIT) {
+    return VK_SAMPLE_COUNT_8_BIT;
+  }
+  if (counts & VK_SAMPLE_COUNT_4_BIT) {
+    return VK_SAMPLE_COUNT_4_BIT;
+  }
+  if (counts & VK_SAMPLE_COUNT_2_BIT) {
+    return VK_SAMPLE_COUNT_2_BIT;
+  }
+
+  return VK_SAMPLE_COUNT_1_BIT;
+}
+

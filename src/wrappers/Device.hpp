@@ -7,21 +7,14 @@
 namespace Vulking {
 class Device {
 public:
-  Device() = default;
-  Device(Device &) = default;
-  Device(PhysicalDevice physicalDevice);
-  ~Device();
-
-  Device &operator=(const Device &other) {
-    device = other.device;
-    physicalDevice = other.physicalDevice;
-    return *this;
-  }
+  Device(const PhysicalDevice &physicalDevice);
+  void release() { vkDestroyDevice(device, allocator); }
   operator VkDevice() const;
 
 private:
+  const PhysicalDevice &physicalDevice;
+
   VkDevice device;
-  PhysicalDevice physicalDevice;
 
   void createLogicalDevice(uint32_t graphicsQueueFamily,
                            uint32_t presentQueueFamily);

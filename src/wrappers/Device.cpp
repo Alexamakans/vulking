@@ -2,16 +2,14 @@
 #include <cassert>
 #include <set>
 
-Vulking::Device::Device(PhysicalDevice physicalDevice)
+const std::vector<const char *> deviceExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+Vulking::Device::Device(const PhysicalDevice &physicalDevice)
     : physicalDevice(physicalDevice) {
   assert(physicalDevice.queueFamilyIndices.isComplete());
-  createLogicalDevice(physicalDevice.queueFamilyIndices.graphicsFamily.value(), physicalDevice.queueFamilyIndices.presentFamily.value());
-}
-
-Vulking::Device::~Device() {
-  if (device) {
-    vkDestroyDevice(device, allocator);
-  }
+  createLogicalDevice(physicalDevice.queueFamilyIndices.graphicsFamily.value(),
+                      physicalDevice.queueFamilyIndices.presentFamily.value());
 }
 
 Vulking::Device::operator VkDevice() const { return device; }
@@ -43,17 +41,10 @@ void Vulking::Device::createLogicalDevice(uint32_t graphicsQueueFamily,
       static_cast<uint32_t>(queueCreateInfos.size());
   createInfo.pQueueCreateInfos = queueCreateInfos.data();
   createInfo.pEnabledFeatures = &deviceFeatures;
-  createInfo.enabledExtensionCount = 0;
-  createInfo.ppEnabledExtensionNames = nullptr;
-
-  if (enableValidationLayers) {
-    static const char *validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
-    createInfo.enabledLayerCount = 1;
-    createInfo.ppEnabledLayerNames = validationLayers;
-  } else {
-    createInfo.enabledLayerCount = 0;
-  }
+  createInfo.enabledExtensionCount =
+      static_cast<uint32_t>(deviceExtensions.size());
+  createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
   CHK(vkCreateDevice(physicalDevice, &createInfo, allocator, &device),
-      "Failed to create logical device.");
+      "failed to create logical device.");
 }

@@ -1,20 +1,72 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
 #include <vulkan/vulkan.hpp>
 
-#define CHK(x, msg)                                                            \
-  if (x != VK_SUCCESS) {                                                       \
-    throw std::runtime_error(msg);                                             \
+inline const char *vkResultToString(VkResult result) {
+  switch (result) {
+  case VK_SUCCESS:
+    return "VK_SUCCESS";
+  case VK_NOT_READY:
+    return "VK_NOT_READY";
+  case VK_TIMEOUT:
+    return "VK_TIMEOUT";
+  case VK_EVENT_SET:
+    return "VK_EVENT_SET";
+  case VK_EVENT_RESET:
+    return "VK_EVENT_RESET";
+  case VK_INCOMPLETE:
+    return "VK_INCOMPLETE";
+  case VK_ERROR_OUT_OF_HOST_MEMORY:
+    return "VK_ERROR_OUT_OF_HOST_MEMORY";
+  case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+    return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+  case VK_ERROR_INITIALIZATION_FAILED:
+    return "VK_ERROR_INITIALIZATION_FAILED";
+  case VK_ERROR_DEVICE_LOST:
+    return "VK_ERROR_DEVICE_LOST";
+  case VK_ERROR_MEMORY_MAP_FAILED:
+    return "VK_ERROR_MEMORY_MAP_FAILED";
+  case VK_ERROR_LAYER_NOT_PRESENT:
+    return "VK_ERROR_LAYER_NOT_PRESENT";
+  case VK_ERROR_EXTENSION_NOT_PRESENT:
+    return "VK_ERROR_EXTENSION_NOT_PRESENT";
+  case VK_ERROR_FEATURE_NOT_PRESENT:
+    return "VK_ERROR_FEATURE_NOT_PRESENT";
+  case VK_ERROR_INCOMPATIBLE_DRIVER:
+    return "VK_ERROR_INCOMPATIBLE_DRIVER";
+  case VK_ERROR_TOO_MANY_OBJECTS:
+    return "VK_ERROR_TOO_MANY_OBJECTS";
+  case VK_ERROR_FORMAT_NOT_SUPPORTED:
+    return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+  case VK_ERROR_SURFACE_LOST_KHR:
+    return "VK_ERROR_SURFACE_LOST_KHR";
+  case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+    return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+  // Add more as needed
+  default:
+    return "Unknown VkResult";
   }
+}
+
+#define CHK(expr, msg)                                                         \
+  do {                                                                         \
+    VkResult _vk_result = (expr);                                              \
+    if (_vk_result != VK_SUCCESS) {                                            \
+      throw std::runtime_error(std::format("{}:{} >{} (VkResult: {})",         \
+                                           __FILE__, __LINE__, msg,            \
+                                           vkResultToString(_vk_result)));     \
+    }                                                                          \
+  } while (0)
 
 #define STYPE(x) VK_STRUCTURE_TYPE_##x
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+constexpr bool enableValidationLayers = true;
 #else
-const bool enableValidationLayers = true;
+constexpr bool enableValidationLayers = false;
 #endif
 
 #ifndef VULKING_ALLOCATOR
@@ -26,3 +78,42 @@ const bool enableValidationLayers = true;
 #endif
 
 inline static const VkAllocationCallbacks *allocator = VULKING_ALLOCATOR;
+
+namespace Vulking {
+template <typename T> class Ptr {
+  T *_ptr = nullptr;
+
+public:
+  // –– Constructors ––//
+  constexpr Ptr() noexcept = default;
+  constexpr Ptr(std::nullptr_t) noexcept : _ptr(nullptr) {}
+  explicit constexpr Ptr(T *p) noexcept : _ptr(p) {}
+
+  // –– Pointer‑style access ––//
+  constexpr T *operator->() const noexcept { return _ptr; }
+  constexpr T &operator*() const noexcept { return *_ptr; }
+  explicit constexpr operator bool() const noexcept { return _ptr != nullptr; }
+
+  // –– Implicit conversion to T& ––//
+  //  This means you can pass a PtrLike<T> anywhere a T& is expected
+  constexpr operator T &() const noexcept { return *_ptr; }
+};
+} // namespace Vulking
+
+static std::vector<char> readFile(const std::string &filename) {
+  std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+  if (!file.is_open()) {
+    throw std::runtime_error("failed to open file!");
+  }
+
+  size_t fileSize = (size_t)file.tellg();
+  std::vector<char> buffer(fileSize);
+
+  file.seekg(0);
+  file.read(buffer.data(), fileSize);
+
+  file.close();
+
+  return buffer;
+}

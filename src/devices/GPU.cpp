@@ -1,8 +1,8 @@
 #include "GPU.hpp"
 
-Vulking::GPU::GPU(Instance instance, Surface surface)
-    : physicalDevice(PhysicalDevice(instance, surface)), device(physicalDevice),
-      graphicsQueue(device, getGraphicsQueueFamily()),
+Vulking::GPU::GPU(const Instance &instance, const Surface &surface)
+    : instance(instance), surface(surface), physicalDevice(instance, surface),
+      device(physicalDevice), graphicsQueue(device, getGraphicsQueueFamily()),
       presentQueue(device, getPresentQueueFamily()) {}
 
 uint32_t Vulking::GPU::getGraphicsQueueFamily() const {

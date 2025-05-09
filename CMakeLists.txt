@@ -9,6 +9,10 @@ set(Vulking_VERSION_PATCH 1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
+# add_compile_options(-ftrivial-auto-var-init=pattern -ftrivial-auto-var-init-stop-after=100000)
+
+
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 
 add_executable(vulking ${SRC_FILES})

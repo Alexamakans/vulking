@@ -3,7 +3,9 @@
 set -e
 
 # echo "Installing dependencies"
-# sudo dnf install vulkan vulkan-headers vulkan-loader-devel glfw-devel glm-devel vulkan-validation-layers glslc
+# sudo dnf install vulkan vulkan-headers vulkan-loader-devel \
+#   glfw-devel glm-devel vulkan-validation-layers glslc clang \
+#   clang-tools-extra ninja
 
 mkdir -p assets/shaders
 pushd assets/shaders
@@ -17,8 +19,8 @@ popd
 mkdir -p build
 pushd build
 #rm -rf ./*
-cmake -S .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1
-make
+cmake -S .. -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+ninja
 popd
 
 if [ -L ./compile_commands.json ]; then
