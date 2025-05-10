@@ -1,4 +1,6 @@
 #include "DescriptorSetLayout.hpp"
+#include <vulkan/vulkan_core.h>
+
 Vulking::DescriptorSetLayout::DescriptorSetLayout(
     const Device &device, std::vector<VkDescriptorSetLayoutBinding> bindings)
     : device(device) {

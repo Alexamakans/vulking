@@ -12,9 +12,9 @@ class GraphicsPipeline {
 public:
   GraphicsPipeline(
       const Device &device, const RenderPass &renderPass,
-      std::vector<ShaderStageInfo> &shaderStages,
-      std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
-      std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,
+      std::vector<ShaderStageInfo> shaderStages,
+      std::vector<VkVertexInputBindingDescription> bindingDescriptions,
+      std::vector<VkVertexInputAttributeDescription> attributeDescriptions,
       VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
       VkPipelineViewportStateCreateInfo viewportStateInfo,
       VkPipelineRasterizationStateCreateInfo rasterizationStateInfo,
@@ -22,7 +22,7 @@ public:
       VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo,
       VkPipelineColorBlendStateCreateInfo colorBlendStateInfo,
       VkPipelineDynamicStateCreateInfo dynamicStateInfo,
-      std::vector<DescriptorSetLayout> &descriptorSetLayouts);
+      std::vector<DescriptorSetLayout> descriptorSetLayouts);
 
   void release();
 
@@ -35,9 +35,9 @@ private:
   VkPipeline pipeline;
 
   void init(
-      std::vector<ShaderStageInfo> &shaderStages,
-      std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
-      std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,
+      std::vector<ShaderStageInfo> shaderStages,
+      std::vector<VkVertexInputBindingDescription> bindingDescriptions,
+      std::vector<VkVertexInputAttributeDescription> attributeDescriptions,
       VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
       VkPipelineViewportStateCreateInfo viewportStateInfo,
       VkPipelineRasterizationStateCreateInfo rasterizationStateInfo,
@@ -45,7 +45,7 @@ private:
       VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo,
       VkPipelineColorBlendStateCreateInfo colorBlendStateInfo,
       VkPipelineDynamicStateCreateInfo dynamicStateInfo,
-      std::vector<DescriptorSetLayout> &descriptorSetLayouts);
+      std::vector<DescriptorSetLayout> descriptorSetLayouts);
 
   VkPipelineVertexInputStateCreateInfo createVertexInputStateCreateInfo(
       std::vector<VkVertexInputBindingDescription> &bindingDescriptions,

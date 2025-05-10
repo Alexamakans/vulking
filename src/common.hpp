@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan.hpp>
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 inline const char *vkResultToString(VkResult result) {
   switch (result) {
   case VK_SUCCESS:

@@ -9,6 +9,7 @@ class DescriptorSetLayout {
 public:
   DescriptorSetLayout(const Device &device,
                       std::vector<VkDescriptorSetLayoutBinding> bindings);
+  DescriptorSetLayout(const DescriptorSetLayout &) = default;
 
   void release();
 
@@ -18,5 +19,6 @@ private:
   const Device &device;
 
   VkDescriptorSetLayout layout;
+  std::vector<VkDescriptorSet> sets;
 };
 } // namespace Vulking
