@@ -8,17 +8,14 @@ class ShaderStageInfo {
 public:
   ShaderStageInfo(const Device &device, const std::string &path,
                   VkShaderStageFlagBits stage);
-
+  ~ShaderStageInfo();
   void release();
-
   operator VkPipelineShaderStageCreateInfo() const;
 
 private:
   const Device &device;
-
   VkPipelineShaderStageCreateInfo info{};
 
   VkShaderModule createShaderModule(const std::vector<char> &code);
 };
-
 } // namespace Vulking

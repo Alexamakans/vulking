@@ -1,5 +1,6 @@
 #include "common.hpp"
 #include "devices/GPU.hpp"
+#include "helpers/VulkingUtil.hpp"
 #include "wrappers/DebugMessenger.hpp"
 #include "wrappers/Device.hpp"
 #include "wrappers/Instance.hpp"
@@ -42,10 +43,11 @@ public:
     DEFINE_VAR(Vulking::Surface, surface, instance, createSurface());
     DEFINE_VAR(Vulking::GPU, gpu, instance, surface);
     DEFINE_VAR(Vulking::RenderPass, renderPass, gpu->device,
-               VK_FORMAT_R32G32B32_SFLOAT, findDepthFormat(),
+               VK_FORMAT_R32G32B32_SFLOAT,
+               VulkingUtil::findDepthFormat(gpu->physicalDevice),
                gpu->physicalDevice.getMsaaSamples());
     DEFINE_VAR(Vulking::SwapChain, swapChain, gpu->physicalDevice, gpu->device,
-               surface);
+               surface, gpu->getRenderPass());
   }
 
   void run() { release(); }
@@ -97,36 +99,6 @@ private:
     CHK(glfwCreateWindowSurface(instance, window, allocator, &vkSurface),
         "failed to create surface");
     return vkSurface;
-  }
-
-  VkFormat findDepthFormat() {
-    return findSupportedFormat(
-        {
-            VK_FORMAT_D32_SFLOAT,
-            VK_FORMAT_D32_SFLOAT_S8_UINT,
-            VK_FORMAT_D24_UNORM_S8_UINT,
-        },
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-  }
-
-  VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
-                               VkImageTiling tiling,
-                               VkFormatFeatureFlags features) {
-    for (VkFormat format : candidates) {
-      VkFormatProperties props;
-      vkGetPhysicalDeviceFormatProperties(gpu->physicalDevice, format, &props);
-
-      if (tiling == VK_IMAGE_TILING_LINEAR &&
-          (props.linearTilingFeatures & features) == features) {
-        return format;
-      } else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
-                 (props.optimalTilingFeatures & features) == features) {
-        return format;
-      }
-    }
-
-    throw std::runtime_error("failed to find supported format!");
   }
 };
 

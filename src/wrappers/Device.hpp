@@ -8,7 +8,7 @@ namespace Vulking {
 class Device {
 public:
   Device(const PhysicalDevice &physicalDevice);
-  void release() { vkDestroyDevice(device, allocator); }
+  void release() const { vkDestroyDevice(device, allocator); }
   operator VkDevice() const;
 
 private:

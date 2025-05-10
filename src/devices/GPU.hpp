@@ -5,6 +5,7 @@
 #include "../wrappers/Device.hpp"
 #include "../wrappers/PhysicalDevice.hpp"
 #include "../wrappers/Queue.hpp"
+#include "../wrappers/RenderPass.hpp"
 #include <vulkan/vulkan_core.h>
 
 namespace Vulking {
@@ -14,14 +15,15 @@ public:
 
   void release() { device.release(); }
 
-  operator VkPhysicalDevice() const { return physicalDevice; }
-  operator VkDevice() const { return device; }
+  operator PhysicalDevice() const { return physicalDevice; }
+  operator Device() const { return device; }
 
   uint32_t getGraphicsQueueFamily() const;
   uint32_t getPresentQueueFamily() const;
+  const RenderPass &getRenderPass() const;
 
-  PhysicalDevice physicalDevice;
-  Device device;
+  const PhysicalDevice physicalDevice;
+  const Device device;
 
 private:
   const Instance &instance;
@@ -32,5 +34,9 @@ private:
 
   uint32_t graphicsQueueFamily{};
   uint32_t presentQueueFamily{};
+
+  const RenderPass renderPass;
+
+  VkRenderPass createRenderPass();
 };
 } // namespace Vulking

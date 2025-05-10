@@ -10,6 +10,9 @@ Vulking::ShaderStageInfo::ShaderStageInfo(const Device &device,
   info.module = createShaderModule(code);
   info.pName = "main";
 }
+
+Vulking::ShaderStageInfo::~ShaderStageInfo() { release(); }
+
 void Vulking::ShaderStageInfo::release() {
   vkDestroyShaderModule(device, info.module, allocator);
 }

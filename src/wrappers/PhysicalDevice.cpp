@@ -86,20 +86,6 @@ bool Vulking::PhysicalDevice::isDeviceSuitable(VkPhysicalDevice dev) const {
          props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
-uint32_t Vulking::PhysicalDevice::findMemoryType(
-    uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
-  VkPhysicalDeviceMemoryProperties memProperties;
-  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
-                                    properties) == properties) {
-      return i;
-    }
-  }
-
-  throw std::runtime_error("failed to find suitable memory type.");
-}
 void Vulking::PhysicalDevice::init() {
   msaaSamples = getMaxUsableMsaaSamples();
 

@@ -29,8 +29,6 @@ public:
   operator VkPhysicalDevice() const;
   void init();
 
-  uint32_t findMemoryType(uint32_t typeFilter,
-                          VkMemoryPropertyFlags properties) const;
   VkPhysicalDeviceProperties getProperties() const;
   VkPhysicalDeviceFeatures getFeatures() const;
   VkFormat getFormat() const;

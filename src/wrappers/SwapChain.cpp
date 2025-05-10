@@ -1,12 +1,40 @@
 #include "SwapChain.hpp"
+#include "../helpers/VulkingUtil.hpp"
 #include "Queue.hpp"
 #include <ios>
 #include <vulkan/vulkan_core.h>
 
 Vulking::SwapChain::SwapChain(const PhysicalDevice &physicalDevice,
-                              const Device &device, const Surface &surface)
+                              const Device &device, const Surface &surface,
+                              const RenderPass &renderPass)
     : physicalDevice(physicalDevice), device(device), surface(surface),
-      swapChain(createSwapChain()) {}
+      swapChain(createSwapChain()), renderPass(renderPass) {
+  fetchSwapChainImages();
+  createSwapchainImageViews();
+  createColorResources();
+  createDepthResources();
+  createFramebuffers();
+}
+
+void Vulking::SwapChain::release() {
+  vkDestroyImageView(device, depthImageView, allocator);
+  vkDestroyImage(device, depthImage, allocator);
+  vkFreeMemory(device, depthImageMemory, allocator);
+
+  vkDestroyImageView(device, colorImageView, allocator);
+  vkDestroyImage(device, colorImage, allocator);
+  vkFreeMemory(device, colorImageMemory, allocator);
+
+  for (auto framebuffer : framebuffers) {
+    vkDestroyFramebuffer(device, framebuffer, allocator);
+  }
+
+  for (auto imageView : imageViews) {
+    vkDestroyImageView(device, imageView, allocator);
+  }
+
+  vkDestroySwapchainKHR(device, swapChain, allocator);
+}
 
 Vulking::SwapChain::operator VkSwapchainKHR() const { return swapChain; }
 
@@ -58,50 +86,94 @@ VkSwapchainKHR Vulking::SwapChain::createSwapChain() {
   createInfo.presentMode = physicalDevice.getPresentMode();
   createInfo.clipped = VK_TRUE;
   createInfo.oldSwapchain = VK_NULL_HANDLE;
-#define A(x) std::cout << std::format("{}: ", #x) << createInfo.x << std::endl;
-  A(preTransform);
-  A(presentMode);
-  A(minImageCount);
-  A(imageExtent.width);
-  A(imageExtent.height);
-  A(sType);
-  A(surface);
-  std::cout << "imageFormat: " << std::hex << createInfo.imageFormat
-            << std::endl;
-  A(imageArrayLayers);
-  A(imageUsage);
-#undef A
 
   VkSwapchainKHR swapChain{};
   CHK(vkCreateSwapchainKHR(device, &createInfo, allocator, &swapChain),
       "failed to create swap chain.");
 
+  return swapChain;
+}
+
+void Vulking::SwapChain::fetchSwapChainImages() {
   // Retrieve swap chain images
   uint32_t imageCount = 0;
   CHK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr),
       "failed to get swapchain image count");
   std::cout << "got num swap chain img: " << imageCount << std::endl;
 
-  std::cout << images.capacity() << std::endl;
   images.resize(imageCount);
-  imageViews.resize(imageCount);
   CHK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, images.data()),
       "failed to get swapchain images");
-
-  return swapChain;
-}
-void Vulking::SwapChain::release() {
-  for (auto framebuffer : framebuffers) {
-    vkDestroyFramebuffer(device, framebuffer, allocator);
-  }
-  for (auto imageView : imageViews) {
-    vkDestroyImageView(device, imageView, allocator);
-  }
-  vkDestroySwapchainKHR(device, swapChain, allocator);
 }
 
-void Vulking::SwapChain::recreateSwapChain(int width, int height) {
+void Vulking::SwapChain::createSwapchainImageViews() {
+  imageViews.resize(images.size());
+
+  for (uint32_t i = 0; i < images.size(); i++) {
+    imageViews[i] = VulkingUtil::createImageView(device, images[i], getFormat(),
+                                                 VK_IMAGE_ASPECT_COLOR_BIT, 1);
+  }
+}
+
+void Vulking::SwapChain::createColorResources() {
+  const auto extent = getExtent();
+  const auto msaaSamples = physicalDevice.getMsaaSamples();
+  VulkingUtil::createImage(physicalDevice, device, extent.width, extent.height,
+                           1, msaaSamples, getFormat(), VK_IMAGE_TILING_OPTIMAL,
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage,
+                           colorImageMemory);
+  colorImageView = VulkingUtil::createImageView(device, colorImage, getFormat(),
+                                                VK_IMAGE_ASPECT_COLOR_BIT, 1);
+}
+
+void Vulking::SwapChain::createDepthResources() {
+  const auto extent = getExtent();
+  const auto msaaSamples = physicalDevice.getMsaaSamples();
+  VulkingUtil::createImage(physicalDevice, device, extent.width, extent.height,
+                           1, msaaSamples, getFormat(), VK_IMAGE_TILING_OPTIMAL,
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
+                           depthImageMemory);
+  depthImageView = VulkingUtil::createImageView(device, depthImage, getFormat(),
+                                                VK_IMAGE_ASPECT_COLOR_BIT, 1);
+}
+
+void Vulking::SwapChain::createFramebuffers() {
+  framebuffers.resize(imageViews.size());
+
+  for (size_t i = 0; i < imageViews.size(); i++) {
+    std::array<VkImageView, 3> attachments = {
+        colorImageView,
+        depthImageView,
+        imageViews[i],
+    };
+
+    VkFramebufferCreateInfo framebufferInfo{};
+    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebufferInfo.renderPass = renderPass;
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments = attachments.data();
+    framebufferInfo.width = getExtent().width;
+    framebufferInfo.height = getExtent().height;
+    framebufferInfo.layers = 1;
+
+    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr,
+                            &framebuffers[i]) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create framebuffer!");
+    }
+  }
+}
+
+void Vulking::SwapChain::recreateSwapChain() {
   CHK(vkDeviceWaitIdle(device), "failed to wait for device to be idle");
   release();
   swapChain = createSwapChain();
+  fetchSwapChainImages();
+  createSwapchainImageViews();
+  createColorResources();
+  createDepthResources();
+  createFramebuffers();
 }
