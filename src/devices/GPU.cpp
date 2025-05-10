@@ -8,7 +8,8 @@ Vulking::GPU::GPU(const Instance &instance, const Surface &surface)
       presentQueue(device, getPresentQueueFamily()),
       renderPass(device, physicalDevice.getFormat(),
                  VulkingUtil::findDepthFormat(physicalDevice),
-                 physicalDevice.getMsaaSamples()) {}
+                 physicalDevice.getMsaaSamples()),
+      commandPool(physicalDevice, device) {}
 
 uint32_t Vulking::GPU::getGraphicsQueueFamily() const {
   assert(physicalDevice.queueFamilyIndices.isComplete());

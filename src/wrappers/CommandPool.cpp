@@ -1,7 +1,8 @@
 #include "CommandPool.hpp"
 Vulking::CommandPool::CommandPool(const PhysicalDevice &physicalDevice,
                                   const Device &device)
-    : physicalDevice(physicalDevice), device(device) {}
+    : physicalDevice(physicalDevice), device(device),
+      commandPool(createCommandPool()) {}
 
 VkCommandPool Vulking::CommandPool::createCommandPool() {
   VkCommandPoolCreateInfo info{};

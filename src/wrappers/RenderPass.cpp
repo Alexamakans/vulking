@@ -85,6 +85,6 @@ VkRenderPass Vulking::RenderPass::createRenderPass() {
 
   VkRenderPass _renderPass;
   CHK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &_renderPass),
-      "failed to create render pass!");
+      "failed to create render pass");
   return _renderPass;
 }

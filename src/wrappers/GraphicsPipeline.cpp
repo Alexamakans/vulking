@@ -2,7 +2,8 @@
 #include <vulkan/vulkan_core.h>
 
 Vulking::GraphicsPipeline::GraphicsPipeline(
-    const Device &device, std::vector<ShaderStageInfo> &shaderStages,
+    const Device &device, const RenderPass &renderPass,
+    std::vector<ShaderStageInfo> &shaderStages,
     std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
     std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
@@ -13,12 +14,12 @@ Vulking::GraphicsPipeline::GraphicsPipeline(
     VkPipelineColorBlendStateCreateInfo colorBlendStateInfo,
     VkPipelineDynamicStateCreateInfo dynamicStateInfo,
     std::vector<DescriptorSetLayout> &descriptorSetLayouts)
-    : device(device),
-      pipeline(createPipeline(
-          shaderStages, bindingDescriptions, attributeDescriptions,
-          inputAssemblyStateInfo, viewportStateInfo, rasterizationStateInfo,
-          multisampleStateInfo, depthStencilStateInfo, colorBlendStateInfo,
-          dynamicStateInfo, descriptorSetLayouts)) {}
+    : device(device), renderPass(renderPass) {
+  init(shaderStages, bindingDescriptions, attributeDescriptions,
+       inputAssemblyStateInfo, viewportStateInfo, rasterizationStateInfo,
+       multisampleStateInfo, depthStencilStateInfo, colorBlendStateInfo,
+       dynamicStateInfo, descriptorSetLayouts);
+}
 
 void Vulking::GraphicsPipeline::release() {
   vkDestroyPipelineLayout(device, pipelineLayout, allocator);
@@ -27,7 +28,7 @@ void Vulking::GraphicsPipeline::release() {
 
 Vulking::GraphicsPipeline::operator VkPipeline() const { return pipeline; }
 
-VkPipeline Vulking::GraphicsPipeline::createPipeline(
+void Vulking::GraphicsPipeline::init(
     std::vector<ShaderStageInfo> &shaderStages,
     std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
     std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,
@@ -40,11 +41,7 @@ VkPipeline Vulking::GraphicsPipeline::createPipeline(
     VkPipelineDynamicStateCreateInfo dynamicStateInfo,
     std::vector<DescriptorSetLayout> &descriptorSetLayouts) {
 
-  VkPipelineShaderStageCreateInfo *pShaderStages =
-      reinterpret_cast<VkPipelineShaderStageCreateInfo *>(shaderStages.data());
-  auto stageCount = shaderStages.size();
-
-  auto vertexInputStateCreateInfo = createVertexInputStateCreateInfo(
+  auto vertexInputStateInfo = createVertexInputStateCreateInfo(
       bindingDescriptions, attributeDescriptions);
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -59,7 +56,26 @@ VkPipeline Vulking::GraphicsPipeline::createPipeline(
       "failed to create pipeline layout");
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
-  graphicsPipelineInfo.sType = STYPE(
+  graphicsPipelineInfo.sType = STYPE(GRAPHICS_PIPELINE_CREATE_INFO);
+  graphicsPipelineInfo.stageCount = shaderStages.size();
+  graphicsPipelineInfo.pStages =
+      reinterpret_cast<VkPipelineShaderStageCreateInfo *>(shaderStages.data());
+  graphicsPipelineInfo.pVertexInputState = &vertexInputStateInfo;
+  graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyStateInfo;
+  graphicsPipelineInfo.pViewportState = &viewportStateInfo;
+  graphicsPipelineInfo.pRasterizationState = &rasterizationStateInfo;
+  graphicsPipelineInfo.pMultisampleState = &multisampleStateInfo;
+  graphicsPipelineInfo.pDepthStencilState = &depthStencilStateInfo;
+  graphicsPipelineInfo.pColorBlendState = &colorBlendStateInfo;
+  graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
+  graphicsPipelineInfo.layout = pipelineLayout;
+  graphicsPipelineInfo.renderPass = renderPass;
+  graphicsPipelineInfo.subpass = 0;
+  graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+  CHK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1,
+                                &graphicsPipelineInfo, allocator, &pipeline),
+      "failed to create graphics pipeline");
 }
 
 VkPipelineVertexInputStateCreateInfo

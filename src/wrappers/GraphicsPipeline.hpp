@@ -3,6 +3,7 @@
 #include "../common.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "Device.hpp"
+#include "RenderPass.hpp"
 #include "ShaderStageInfo.hpp"
 #include <vulkan/vulkan_core.h>
 
@@ -10,7 +11,8 @@ namespace Vulking {
 class GraphicsPipeline {
 public:
   GraphicsPipeline(
-      const Device &device, std::vector<ShaderStageInfo> &shaderStages,
+      const Device &device, const RenderPass &renderPass,
+      std::vector<ShaderStageInfo> &shaderStages,
       std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
       std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,
       VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
@@ -28,10 +30,11 @@ public:
 
 private:
   const Device &device;
+  const RenderPass &renderPass;
   VkPipelineLayout pipelineLayout;
   VkPipeline pipeline;
 
-  VkPipeline createPipeline(
+  void init(
       std::vector<ShaderStageInfo> &shaderStages,
       std::vector<VkVertexInputBindingDescription> &bindingDescriptions,
       std::vector<VkVertexInputAttributeDescription> &attributeDescriptions,

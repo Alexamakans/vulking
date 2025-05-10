@@ -10,9 +10,13 @@ class CommandPool {
 public:
   CommandPool(const PhysicalDevice &physicalDevice, const Device &device);
 
+  operator VkCommandPool() const { return commandPool; }
+
 private:
   const PhysicalDevice &physicalDevice;
   const Device &device;
+
+  VkCommandPool commandPool;
 
   VkCommandPool createCommandPool();
 };

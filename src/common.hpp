@@ -1,5 +1,12 @@
 #pragma once
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -79,32 +86,11 @@ constexpr bool enableValidationLayers = false;
 
 inline static const VkAllocationCallbacks *allocator = VULKING_ALLOCATOR;
 
-namespace Vulking {
-template <typename T> class Ptr {
-  T *_ptr = nullptr;
-
-public:
-  // –– Constructors ––//
-  constexpr Ptr() noexcept = default;
-  constexpr Ptr(std::nullptr_t) noexcept : _ptr(nullptr) {}
-  explicit constexpr Ptr(T *p) noexcept : _ptr(p) {}
-
-  // –– Pointer‑style access ––//
-  constexpr T *operator->() const noexcept { return _ptr; }
-  constexpr T &operator*() const noexcept { return *_ptr; }
-  explicit constexpr operator bool() const noexcept { return _ptr != nullptr; }
-
-  // –– Implicit conversion to T& ––//
-  //  This means you can pass a PtrLike<T> anywhere a T& is expected
-  constexpr operator T &() const noexcept { return *_ptr; }
-};
-} // namespace Vulking
-
 static std::vector<char> readFile(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    throw std::runtime_error("failed to open file!");
+    throw std::runtime_error("failed to open file");
   }
 
   size_t fileSize = (size_t)file.tellg();

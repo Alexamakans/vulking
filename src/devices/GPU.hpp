@@ -2,6 +2,7 @@
 
 #include "../common.hpp"
 
+#include "../wrappers/CommandPool.hpp"
 #include "../wrappers/Device.hpp"
 #include "../wrappers/PhysicalDevice.hpp"
 #include "../wrappers/Queue.hpp"
@@ -15,12 +16,10 @@ public:
 
   void release() { device.release(); }
 
-  operator PhysicalDevice() const { return physicalDevice; }
-  operator Device() const { return device; }
-
   uint32_t getGraphicsQueueFamily() const;
   uint32_t getPresentQueueFamily() const;
   const RenderPass &getRenderPass() const;
+  const RenderPass &getCommandPool() const;
 
   const PhysicalDevice physicalDevice;
   const Device device;
@@ -36,6 +35,7 @@ private:
   uint32_t presentQueueFamily{};
 
   const RenderPass renderPass;
+  const CommandPool commandPool;
 
   VkRenderPass createRenderPass();
 };

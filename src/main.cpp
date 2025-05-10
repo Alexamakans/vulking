@@ -2,7 +2,6 @@
 #include "devices/GPU.hpp"
 #include "helpers/VulkingUtil.hpp"
 #include "wrappers/DebugMessenger.hpp"
-#include "wrappers/Device.hpp"
 #include "wrappers/Instance.hpp"
 #include "wrappers/RenderPass.hpp"
 #include "wrappers/Surface.hpp"
@@ -15,49 +14,35 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-#define CONCAT_IMPL(a, b) a##b
-#define CONCAT(a, b) CONCAT_IMPL(a, b)
-#define DECLARE_VAR(type, name)                                                \
-  alignas(type) std::byte __##name##_buf[sizeof(type)];                        \
-  type *__p_##name = nullptr;                                                  \
-  Vulking::Ptr<type> name;
-
-#define DEFINE_VAR(type, name, ...)                                            \
-  __p_##name = new (__##name##_buf) type(__VA_ARGS__);                         \
-  name = Vulking::Ptr<type>(__p_##name);
-
 class MyApplication {
 public:
   GLFWwindow *window;
   Vulking::Instance instance;
   Vulking::DebugMessenger debugMessenger;
-
-  DECLARE_VAR(Vulking::Surface, surface)
-  DECLARE_VAR(Vulking::GPU, gpu)
-  DECLARE_VAR(Vulking::RenderPass, renderPass)
-  DECLARE_VAR(Vulking::SwapChain, swapChain)
+  Vulking::Surface surface;
+  Vulking::GPU gpu;
+  Vulking::RenderPass renderPass;
+  Vulking::SwapChain swapChain;
 
   MyApplication()
       : window(createWindow()), instance(getRequiredExtensions(), true),
-        debugMessenger(instance) {
-    DEFINE_VAR(Vulking::Surface, surface, instance, createSurface());
-    DEFINE_VAR(Vulking::GPU, gpu, instance, surface);
-    DEFINE_VAR(Vulking::RenderPass, renderPass, gpu->device,
-               VK_FORMAT_R32G32B32_SFLOAT,
-               VulkingUtil::findDepthFormat(gpu->physicalDevice),
-               gpu->physicalDevice.getMsaaSamples());
-    DEFINE_VAR(Vulking::SwapChain, swapChain, gpu->physicalDevice, gpu->device,
-               surface, gpu->getRenderPass());
-  }
+        debugMessenger(instance),
+        surface(instance, createSurface(instance, window)),
+        gpu(instance, surface),
+        renderPass(gpu.device, VK_FORMAT_R32G32B32_SFLOAT,
+                   VulkingUtil::findDepthFormat(gpu.physicalDevice),
+                   gpu.physicalDevice.getMsaaSamples()),
+        swapChain(gpu.physicalDevice, gpu.device, surface,
+                  gpu.getRenderPass()) {}
 
   void run() { release(); }
 
 private:
   void release() {
-    swapChain->release();
-    renderPass->release();
-    gpu->release();
-    surface->release();
+    swapChain.release();
+    renderPass.release();
+    gpu.release();
+    surface.release();
     debugMessenger.release();
     instance.release();
     glfwDestroyWindow(window);
@@ -94,7 +79,8 @@ private:
     return extensions;
   }
 
-  VkSurfaceKHR createSurface() {
+  VkSurfaceKHR createSurface(const Vulking::Instance &instance,
+                             GLFWwindow *window) {
     VkSurfaceKHR vkSurface;
     CHK(glfwCreateWindowSurface(instance, window, allocator, &vkSurface),
         "failed to create surface");

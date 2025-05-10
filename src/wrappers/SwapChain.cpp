@@ -162,7 +162,7 @@ void Vulking::SwapChain::createFramebuffers() {
 
     if (vkCreateFramebuffer(device, &framebufferInfo, nullptr,
                             &framebuffers[i]) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create framebuffer!");
+      throw std::runtime_error("failed to create framebuffer");
     }
   }
 }
