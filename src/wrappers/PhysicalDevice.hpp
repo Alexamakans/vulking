@@ -32,6 +32,7 @@ public:
   VkPhysicalDeviceProperties getProperties() const;
   VkPhysicalDeviceFeatures getFeatures() const;
   VkFormat getFormat() const;
+  VkFormat getDepthFormat() const;
   VkExtent2D getExtent() const;
   const VkSurfaceCapabilitiesKHR &getCapabilities() const;
   VkPresentModeKHR getPresentMode() const;
@@ -44,6 +45,7 @@ private:
 
   VkSurfaceCapabilitiesKHR capabilities;
   VkFormat format;
+  VkFormat depthFormat;
   VkExtent2D extent;
   VkPresentModeKHR presentMode;
   VkSampleCountFlagBits msaaSamples;

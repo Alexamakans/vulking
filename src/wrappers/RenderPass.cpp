@@ -4,9 +4,9 @@ Vulking::RenderPass::RenderPass(const Device &device, VkFormat colorFormat,
                                 VkFormat depthFormat,
                                 VkSampleCountFlagBits msaaSamples)
     : device(device), colorFormat(colorFormat), depthFormat(depthFormat),
-      msaaSamples(msaaSamples) {}
+      msaaSamples(msaaSamples), renderPass(createRenderPass()) {}
 
-void Vulking::RenderPass::release() {
+void Vulking::RenderPass::release() const {
   vkDestroyRenderPass(device, renderPass, allocator);
 }
 

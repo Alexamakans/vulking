@@ -16,9 +16,11 @@ endif()
 
 # Always add debug info in Debug builds
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
-# add_compile_options(-ftrivial-auto-var-init=pattern -ftrivial-auto-var-init-stop-after=100000)
 
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
+
+# add_compile_options(-ftrivial-auto-var-init=pattern
+# -ftrivial-auto-var-init-stop-after=100000)
 
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 
@@ -29,7 +31,11 @@ find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
 target_include_directories(vulking PRIVATE "includes")
-target_link_libraries(vulking Vulkan::Vulkan)
-target_link_libraries(vulking glfw)
-target_link_libraries(vulking glm::glm)
-# add_dependencies(Vulking copy_assets)
+target_link_libraries(vulking Vulkan::Vulkan glfw glm::glm)
+
+add_custom_command(
+  TARGET vulking
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets"
+          "$<TARGET_FILE_DIR:vulking>/assets"
+  COMMENT "Copying assets directory to build output")

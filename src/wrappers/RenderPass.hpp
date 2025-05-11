@@ -11,7 +11,7 @@ public:
   RenderPass(const Device &device, VkFormat colorFormat, VkFormat depthFormat,
              VkSampleCountFlagBits msaaSamples);
 
-  void release();
+  void release() const;
 
   operator VkRenderPass() const { return renderPass; }
 

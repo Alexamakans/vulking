@@ -91,11 +91,9 @@ VkImageView VulkingUtil::createImageView(const Vulking::Device &device,
   return imageView;
 }
 
-VkFormat
-VulkingUtil::findSupportedFormat(const Vulking::PhysicalDevice &physicalDevice,
-                                 const std::vector<VkFormat> &candidates,
-                                 VkImageTiling tiling,
-                                 VkFormatFeatureFlags features) {
+VkFormat VulkingUtil::findSupportedFormat(
+    VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
+    VkImageTiling tiling, VkFormatFeatureFlags features) {
   for (VkFormat format : candidates) {
     VkFormatProperties props;
     vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
@@ -112,8 +110,7 @@ VulkingUtil::findSupportedFormat(const Vulking::PhysicalDevice &physicalDevice,
   throw std::runtime_error("failed to find supported format");
 }
 
-VkFormat
-VulkingUtil::findDepthFormat(const Vulking::PhysicalDevice &physicalDevice) {
+VkFormat VulkingUtil::findDepthFormat(VkPhysicalDevice physicalDevice) {
   return findSupportedFormat(physicalDevice,
                              {
                                  VK_FORMAT_D32_SFLOAT,

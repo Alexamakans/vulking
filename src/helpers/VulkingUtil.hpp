@@ -27,12 +27,12 @@ VkImageView createImageView(const Vulking::Device &device, VkImage image,
                             VkFormat format, VkImageAspectFlags aspectFlags,
                             uint32_t mipLevels);
 
-VkFormat findSupportedFormat(const Vulking::PhysicalDevice &physicalDevice,
+VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice,
                              const std::vector<VkFormat> &candidates,
                              VkImageTiling tiling,
                              VkFormatFeatureFlags features);
 
-VkFormat findDepthFormat(const Vulking::PhysicalDevice &physicalDevice);
+VkFormat findDepthFormat(VkPhysicalDevice physicalDevice);
 
 void createBuffer(const Vulking::PhysicalDevice &physicalDevice,
                   const Vulking::Device &device, VkDeviceSize size,

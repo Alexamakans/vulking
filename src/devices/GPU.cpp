@@ -24,3 +24,11 @@ uint32_t Vulking::GPU::getPresentQueueFamily() const {
 const Vulking::RenderPass &Vulking::GPU::getRenderPass() const {
   return renderPass;
 }
+
+const Vulking::CommandPool &Vulking::GPU::getCommandPool() const {
+  return commandPool;
+}
+
+const Vulking::DescriptorPool &Vulking::GPU::getDescriptorPool() const {
+  return *descriptorPool;
+}

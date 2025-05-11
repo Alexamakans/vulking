@@ -54,8 +54,11 @@ inline const char *vkResultToString(VkResult result) {
     return "VK_ERROR_SURFACE_LOST_KHR";
   case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+  case VK_ERROR_OUT_OF_POOL_MEMORY:
+    return "VK_ERROR_OUT_OF_POOL_MEMORY";
   // Add more as needed
   default:
+    std::cout << "result: " << result << std::endl;
     return "Unknown VkResult";
   }
 }
@@ -73,9 +76,9 @@ inline const char *vkResultToString(VkResult result) {
 #define STYPE(x) VK_STRUCTURE_TYPE_##x
 
 #ifdef NDEBUG
-constexpr bool enableValidationLayers = true;
-#else
 constexpr bool enableValidationLayers = false;
+#else
+constexpr bool enableValidationLayers = true;
 #endif
 
 #ifndef VULKING_ALLOCATOR
@@ -92,7 +95,7 @@ static std::vector<char> readFile(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    throw std::runtime_error("failed to open file");
+    throw std::runtime_error(std::format("failed to open file '{}'", filename));
   }
 
   size_t fileSize = (size_t)file.tellg();

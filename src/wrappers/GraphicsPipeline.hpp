@@ -27,25 +27,26 @@ public:
   void release();
 
   operator VkPipeline() const;
+  VkPipelineLayout getLayout() const { return layout; }
 
 private:
   const Device &device;
   const RenderPass &renderPass;
-  VkPipelineLayout pipelineLayout;
+  VkPipelineLayout layout;
   VkPipeline pipeline;
 
-  void init(
-      std::vector<ShaderStageInfo> shaderStages,
-      std::vector<VkVertexInputBindingDescription> bindingDescriptions,
-      std::vector<VkVertexInputAttributeDescription> attributeDescriptions,
-      VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
-      VkPipelineViewportStateCreateInfo viewportStateInfo,
-      VkPipelineRasterizationStateCreateInfo rasterizationStateInfo,
-      VkPipelineMultisampleStateCreateInfo multisampleStateInfo,
-      VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo,
-      VkPipelineColorBlendStateCreateInfo colorBlendStateInfo,
-      VkPipelineDynamicStateCreateInfo dynamicStateInfo,
-      std::vector<DescriptorSetLayout> descriptorSetLayouts);
+  void
+  init(std::vector<ShaderStageInfo> shaderStages,
+       std::vector<VkVertexInputBindingDescription> bindingDescriptions,
+       std::vector<VkVertexInputAttributeDescription> attributeDescriptions,
+       VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo,
+       VkPipelineViewportStateCreateInfo viewportStateInfo,
+       VkPipelineRasterizationStateCreateInfo rasterizationStateInfo,
+       VkPipelineMultisampleStateCreateInfo multisampleStateInfo,
+       VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo,
+       VkPipelineColorBlendStateCreateInfo colorBlendStateInfo,
+       VkPipelineDynamicStateCreateInfo dynamicStateInfo,
+       std::vector<DescriptorSetLayout> descriptorSetLayouts);
 
   VkPipelineVertexInputStateCreateInfo createVertexInputStateCreateInfo(
       std::vector<VkVertexInputBindingDescription> &bindingDescriptions,

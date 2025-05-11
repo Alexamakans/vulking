@@ -31,6 +31,7 @@ void Vulking::Device::createLogicalDevice(uint32_t graphicsQueueFamily,
   }
 
   VkPhysicalDeviceFeatures deviceFeatures{};
+  deviceFeatures.samplerAnisotropy = VK_TRUE;
   if (ENABLE_SAMPLE_SHADING) {
     deviceFeatures.sampleRateShading = VK_TRUE;
   }

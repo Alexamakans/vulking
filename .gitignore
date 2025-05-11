@@ -5,6 +5,9 @@
 compile_commands.json
 .cache/
 
+# vulkan stuff
+/vkconfig-log.txt
+
 # CMake ignores
 build/
 CMakeLists.txt.user
@@ -28,7 +31,6 @@ CMakeUserPresets.json
 *.slo
 *.lo
 *.o
-*.obj
 
 ## Precompiled Headers
 *.gch

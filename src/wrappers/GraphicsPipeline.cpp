@@ -22,7 +22,7 @@ Vulking::GraphicsPipeline::GraphicsPipeline(
 }
 
 void Vulking::GraphicsPipeline::release() {
-  vkDestroyPipelineLayout(device, pipelineLayout, allocator);
+  vkDestroyPipelineLayout(device, layout, allocator);
   vkDestroyPipeline(device, pipeline, allocator);
 };
 
@@ -48,19 +48,24 @@ void Vulking::GraphicsPipeline::init(
   pipelineLayoutInfo.sType = STYPE(PIPELINE_LAYOUT_CREATE_INFO);
   pipelineLayoutInfo.setLayoutCount =
       static_cast<uint32_t>(descriptorSetLayouts.size());
-  pipelineLayoutInfo.pSetLayouts =
-      reinterpret_cast<VkDescriptorSetLayout *>(descriptorSetLayouts.data());
+  std::vector<VkDescriptorSetLayout> rawSetLayouts;
+  for (auto &setLayout : descriptorSetLayouts) {
+    rawSetLayouts.push_back(setLayout);
+  }
+  pipelineLayoutInfo.pSetLayouts = rawSetLayouts.data();
 
-  throw std::runtime_error("WAOW it crash here goodnight");
   CHK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, allocator,
-                             &pipelineLayout),
+                             &layout),
       "failed to create pipeline layout");
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
   graphicsPipelineInfo.sType = STYPE(GRAPHICS_PIPELINE_CREATE_INFO);
   graphicsPipelineInfo.stageCount = shaderStages.size();
-  graphicsPipelineInfo.pStages =
-      reinterpret_cast<VkPipelineShaderStageCreateInfo *>(shaderStages.data());
+  std::vector<VkPipelineShaderStageCreateInfo> rawShaderStages;
+  for (auto &shaderStage : shaderStages) {
+    rawShaderStages.push_back(shaderStage);
+  }
+  graphicsPipelineInfo.pStages = rawShaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputStateInfo;
   graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyStateInfo;
   graphicsPipelineInfo.pViewportState = &viewportStateInfo;
@@ -69,7 +74,7 @@ void Vulking::GraphicsPipeline::init(
   graphicsPipelineInfo.pDepthStencilState = &depthStencilStateInfo;
   graphicsPipelineInfo.pColorBlendState = &colorBlendStateInfo;
   graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
-  graphicsPipelineInfo.layout = pipelineLayout;
+  graphicsPipelineInfo.layout = layout;
   graphicsPipelineInfo.renderPass = renderPass;
   graphicsPipelineInfo.subpass = 0;
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -77,6 +82,10 @@ void Vulking::GraphicsPipeline::init(
   CHK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, allocator, &pipeline),
       "failed to create graphics pipeline");
+
+  for (auto &shaderStage : shaderStages) {
+    shaderStage.release();
+  }
 }
 
 VkPipelineVertexInputStateCreateInfo

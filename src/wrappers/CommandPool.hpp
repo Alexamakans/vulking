@@ -10,7 +10,12 @@ class CommandPool {
 public:
   CommandPool(const PhysicalDevice &physicalDevice, const Device &device);
 
+  void release() const { vkDestroyCommandPool(device, commandPool, allocator); }
+
   operator VkCommandPool() const { return commandPool; }
+
+  void allocateBuffer(VkCommandBufferLevel level, size_t count,
+                      VkCommandBuffer *buffers) const;
 
 private:
   const PhysicalDevice &physicalDevice;

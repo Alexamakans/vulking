@@ -46,8 +46,16 @@ VkFormat Vulking::SwapChain::getFormat() const {
   return physicalDevice.getFormat();
 }
 
+VkFormat Vulking::SwapChain::getDepthFormat() const {
+  return physicalDevice.getDepthFormat();
+}
+
 VkExtent2D Vulking::SwapChain::getExtent() const {
   return physicalDevice.getExtent();
+}
+
+VkFramebuffer Vulking::SwapChain::getFramebuffer(uint32_t index) const {
+  return framebuffers.at(index);
 }
 
 VkSwapchainKHR Vulking::SwapChain::createSwapChain() {
@@ -131,14 +139,13 @@ void Vulking::SwapChain::createColorResources() {
 void Vulking::SwapChain::createDepthResources() {
   const auto extent = getExtent();
   const auto msaaSamples = physicalDevice.getMsaaSamples();
-  VulkingUtil::createImage(physicalDevice, device, extent.width, extent.height,
-                           1, msaaSamples, getFormat(), VK_IMAGE_TILING_OPTIMAL,
-                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
-                           depthImageMemory);
-  depthImageView = VulkingUtil::createImageView(device, depthImage, getFormat(),
-                                                VK_IMAGE_ASPECT_COLOR_BIT, 1);
+  VulkingUtil::createImage(
+      physicalDevice, device, extent.width, extent.height, 1, msaaSamples,
+      getDepthFormat(), VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+  depthImageView = VulkingUtil::createImageView(
+      device, depthImage, getDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
 
 void Vulking::SwapChain::createFramebuffers() {
@@ -167,7 +174,7 @@ void Vulking::SwapChain::createFramebuffers() {
   }
 }
 
-void Vulking::SwapChain::recreateSwapChain() {
+void Vulking::SwapChain::recreate() {
   CHK(vkDeviceWaitIdle(device), "failed to wait for device to be idle");
   release();
   swapChain = createSwapChain();

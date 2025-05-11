@@ -1,8 +1,22 @@
 #include "CommandPool.hpp"
+
 Vulking::CommandPool::CommandPool(const PhysicalDevice &physicalDevice,
                                   const Device &device)
     : physicalDevice(physicalDevice), device(device),
       commandPool(createCommandPool()) {}
+
+void Vulking::CommandPool::allocateBuffer(VkCommandBufferLevel level,
+                                          size_t count,
+                                          VkCommandBuffer *buffers) const {
+  VkCommandBufferAllocateInfo info{};
+  info.sType = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
+  info.commandPool = commandPool;
+  info.level = level;
+  info.commandBufferCount = static_cast<uint32_t>(count);
+
+  CHK(vkAllocateCommandBuffers(device, &info, buffers),
+      "failed to allocate command buffers");
+}
 
 VkCommandPool Vulking::CommandPool::createCommandPool() {
   VkCommandPoolCreateInfo info{};

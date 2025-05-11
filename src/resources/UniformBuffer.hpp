@@ -22,11 +22,13 @@ public:
         "failed to map uniform buffer memory");
   };
 
-  ~UniformBuffer() {
+  void release() {
     vkDestroyBuffer(device, buffer, allocator);
     vkFreeMemory(device, memory, allocator);
     data = nullptr;
   }
+
+  operator VkBuffer() const { return buffer; }
 
   void set(T *t) const { memcpy(data, t, sizeof(T)); };
   T *get() { return reinterpret_cast<T *>(data); }

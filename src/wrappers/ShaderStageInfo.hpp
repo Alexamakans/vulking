@@ -8,7 +8,6 @@ class ShaderStageInfo {
 public:
   ShaderStageInfo(const Device &device, const std::string &path,
                   VkShaderStageFlagBits stage);
-  ~ShaderStageInfo();
   void release();
   operator VkPipelineShaderStageCreateInfo() const;
 

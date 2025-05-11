@@ -15,7 +15,9 @@ public:
         const CommandPool &commandPool, const Queue &queue,
         const std::string &path);
 
-  ~Model();
+  void release() const;
+  void bindBuffers(VkCommandBuffer commandBuffer);
+  uint32_t getNumIndices() const;
 
 private:
   const PhysicalDevice &physicalDevice;
@@ -23,9 +25,11 @@ private:
 
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
+  uint32_t numVertices;
 
   VkBuffer indexBuffer;
   VkDeviceMemory indexBufferMemory;
+  uint32_t numIndices;
 
   template <typename T>
   void createBuffer(const PhysicalDevice &physicalDevice, const Device &device,

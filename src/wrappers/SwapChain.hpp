@@ -18,9 +18,11 @@ public:
 
   const std::vector<VkImage> &getImages() const;
   VkFormat getFormat() const;
+  VkFormat getDepthFormat() const;
   VkExtent2D getExtent() const;
+  VkFramebuffer getFramebuffer(uint32_t index) const;
 
-  void recreateSwapChain();
+  void recreate();
 
 private:
   const PhysicalDevice &physicalDevice;

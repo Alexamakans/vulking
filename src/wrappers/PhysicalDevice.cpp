@@ -1,4 +1,5 @@
 #include "PhysicalDevice.hpp"
+#include "../helpers/VulkingUtil.hpp"
 #include <vulkan/vulkan_core.h>
 
 Vulking::PhysicalDevice::PhysicalDevice(const Instance &instance,
@@ -105,6 +106,7 @@ void Vulking::PhysicalDevice::init() {
 
   VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
   format = surfaceFormat.format;
+  depthFormat = VulkingUtil::findDepthFormat(physicalDevice);
   extent = capabilities.currentExtent;
 
   // Choose present mode (FIFO is guaranteed to be supported)
@@ -112,6 +114,7 @@ void Vulking::PhysicalDevice::init() {
 }
 
 VkFormat Vulking::PhysicalDevice::getFormat() const { return format; }
+VkFormat Vulking::PhysicalDevice::getDepthFormat() const { return depthFormat; }
 VkExtent2D Vulking::PhysicalDevice::getExtent() const { return extent; }
 
 const VkSurfaceCapabilitiesKHR &
@@ -154,4 +157,3 @@ VkSampleCountFlagBits Vulking::PhysicalDevice::getMaxUsableMsaaSamples() const {
 
   return VK_SAMPLE_COUNT_1_BIT;
 }
-
