@@ -112,6 +112,7 @@ VkPipelineDynamicStateCreateInfo createDynamicStateInfo() {
 auto colorBlendAttachment = createColorBlendAttachmentState();
 
 struct UBO {
+  alignas(4) glm::float32 time;
   alignas(16) glm::mat4 model;
   alignas(16) glm::mat4 view;
   alignas(16) glm::mat4 proj;
@@ -169,9 +170,7 @@ public:
         texture(gpu.physicalDevice, gpu.device, gpu.getCommandPool(),
                 gpu.getGraphicsQueue(), "assets/textures/viking_room.png"),
         model(gpu.physicalDevice, gpu.device, gpu.getCommandPool(),
-              gpu.getGraphicsQueue(), "assets/models/viking_room.obj") {
-    init();
-  }
+              gpu.getGraphicsQueue(), "assets/models/viking_room.obj") {}
 
   static void onFramebufferResize(GLFWwindow *window, int width, int height) {
     auto app =
@@ -241,6 +240,8 @@ private:
     gpu.getCommandPool().allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                                         commandBuffers.size(),
                                         commandBuffers.data());
+
+    createSyncObjects();
   }
 
   void mainLoop() {
@@ -264,15 +265,23 @@ private:
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      if (vkCreateSemaphore(gpu.device, &semaphoreInfo, nullptr,
+      if (vkCreateSemaphore(gpu.device, &semaphoreInfo, allocator,
                             &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-          vkCreateSemaphore(gpu.device, &semaphoreInfo, nullptr,
+          vkCreateSemaphore(gpu.device, &semaphoreInfo, allocator,
                             &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-          vkCreateFence(gpu.device, &fenceInfo, nullptr, &inFlightFences[i]) !=
-              VK_SUCCESS) {
+          vkCreateFence(gpu.device, &fenceInfo, allocator,
+                        &inFlightFences[i]) != VK_SUCCESS) {
         throw std::runtime_error(
             "failed to create synchronization objects for a frame!");
       }
+      NAME_OBJECT(gpu.device, VK_OBJECT_TYPE_SEMAPHORE,
+                  imageAvailableSemaphores[i],
+                  std::format("image_available_semaphore_{}", i).c_str());
+      NAME_OBJECT(gpu.device, VK_OBJECT_TYPE_SEMAPHORE,
+                  renderFinishedSemaphores[i],
+                  std::format("render_finished_semaphore_{}", i).c_str());
+      NAME_OBJECT(gpu.device, VK_OBJECT_TYPE_FENCE, inFlightFences[i],
+                  std::format("in_flight_fence_{}", i).c_str());
     }
   }
 
@@ -284,6 +293,7 @@ private:
                      .count();
 
     UBO ubo{};
+    ubo.time = time;
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                             glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view =
@@ -426,11 +436,21 @@ private:
   }
 
   void release() {
+    graphicsPipeline.release();
+    model.release();
     texture.release();
     for (auto &uniformBuffer : uniformBuffers) {
       uniformBuffer.release();
     }
-    graphicsPipeline.release();
+    for (auto &e : renderFinishedSemaphores) {
+      vkDestroySemaphore(gpu.device, e, allocator);
+    }
+    for (auto &e : imageAvailableSemaphores) {
+      vkDestroySemaphore(gpu.device, e, allocator);
+    }
+    for (auto &e : inFlightFences) {
+      vkDestroyFence(gpu.device, e, allocator);
+    }
     descriptorSetLayout.release();
     swapChain.release();
     gpu.release();

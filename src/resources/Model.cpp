@@ -16,15 +16,18 @@ Vulking::Model::Model(const PhysicalDevice &physicalDevice,
   createBuffer(physicalDevice, device, commandPool, queue, vertices,
                VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-               vertexBuffer, vertexBufferMemory);
+               vertexBuffer, vertexBufferMemory, "model_vertex_buffer");
   createBuffer(physicalDevice, device, commandPool, queue, indices,
                VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-               indexBuffer, indexBufferMemory);
+               indexBuffer, indexBufferMemory, "model_index_buffer");
 }
 
 void Vulking::Model::release() const {
   vkDestroyBuffer(device, vertexBuffer, allocator);
+  vkFreeMemory(device, vertexBufferMemory, allocator);
+  vkDestroyBuffer(device, indexBuffer, allocator);
+  vkFreeMemory(device, indexBufferMemory, allocator);
 }
 
 void Vulking::Model::bindBuffers(VkCommandBuffer commandBuffer) {

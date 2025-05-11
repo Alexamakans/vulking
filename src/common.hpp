@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vulkan/vulkan_core.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
@@ -12,7 +13,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.hpp>
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+constexpr int MAX_FRAMES_IN_FLIGHT = 4;
 
 inline const char *vkResultToString(VkResult result) {
   switch (result) {
@@ -77,8 +78,36 @@ inline const char *vkResultToString(VkResult result) {
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
+#define NAME_OBJECT(...)
 #else
 constexpr bool enableValidationLayers = true;
+
+inline PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT = nullptr;
+
+#define NAME_OBJECT(device, type, handle, name)                                \
+  nameObject(device, type, handle, name)
+
+inline void _nameObject(VkDevice device, VkObjectType objectType,
+                        uint64_t handle, const char *name) {
+  VkDebugUtilsObjectNameInfoEXT nameInfo = {
+      .sType = STYPE(DEBUG_UTILS_OBJECT_NAME_INFO_EXT),
+      .objectType = objectType,
+      .objectHandle = handle,
+      .pObjectName = name,
+  };
+
+  if (pfnSetDebugUtilsObjectNameEXT) {
+    CHK(pfnSetDebugUtilsObjectNameEXT(device, &nameInfo),
+        "failed to name object");
+  }
+}
+
+template <typename T>
+inline void nameObject(VkDevice device, VkObjectType objectType, T handle,
+                       const char *name) {
+  _nameObject(device, objectType, (uint64_t)(uintptr_t)handle, name);
+}
+
 #endif
 
 #ifndef VULKING_ALLOCATOR

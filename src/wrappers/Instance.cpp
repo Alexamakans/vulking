@@ -11,6 +11,10 @@ Vulking::Instance::Instance(const std::vector<const char *> &requiredExtensions,
   if (validationEnabled && !checkValidationLayerSupport()) {
     throw std::runtime_error("Validation layers requested, but not available.");
   }
+
+  pfnSetDebugUtilsObjectNameEXT =
+      reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+          vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
 }
 
 Vulking::Instance::operator VkInstance() const { return instance; }

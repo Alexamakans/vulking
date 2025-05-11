@@ -35,22 +35,17 @@ private:
   void createBuffer(const PhysicalDevice &physicalDevice, const Device &device,
                     const CommandPool &commandPool, const Queue &queue,
                     std::vector<T> elements, VkBufferUsageFlags usage,
-                    VkBuffer &buffer, VkDeviceMemory &memory);
+                    VkBuffer &buffer, VkDeviceMemory &memory,
+                    const char *name = "unnamed") {
+
+    VkDeviceSize size = sizeof(elements[0]) * elements.size();
+    StagingBuffer stagingBuffer(physicalDevice, device, elements.data(), size,
+                                "model_staging_buffer");
+    VulkingUtil::createBuffer(physicalDevice, device, size, usage,
+                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer,
+                              memory, name);
+    VulkingUtil::copyBuffer(device, commandPool, queue, stagingBuffer, buffer,
+                            size);
+  }
 };
-
-template <typename T>
-inline void
-Model::createBuffer(const PhysicalDevice &physicalDevice, const Device &device,
-                    const CommandPool &commandPool, const Queue &queue,
-                    std::vector<T> elements, VkBufferUsageFlags usage,
-                    VkBuffer &buffer, VkDeviceMemory &memory) {
-  VkDeviceSize size = sizeof(elements[0]) * elements.size();
-  StagingBuffer stagingBuffer(physicalDevice, device, elements.data(), size);
-  VulkingUtil::createBuffer(physicalDevice, device, size, usage,
-                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer,
-                            memory);
-  VulkingUtil::copyBuffer(device, commandPool, queue, stagingBuffer, buffer,
-                          size);
-}
-
 } // namespace Vulking

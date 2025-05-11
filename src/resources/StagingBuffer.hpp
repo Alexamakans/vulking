@@ -9,7 +9,7 @@ namespace Vulking {
 class StagingBuffer {
 public:
   StagingBuffer(const PhysicalDevice &physicalDevice, const Device &device,
-                void *data, VkDeviceSize size);
+                void *data, VkDeviceSize size, const char* name = "unnamed");
   ~StagingBuffer();
 
   operator VkBuffer() const;

@@ -37,7 +37,8 @@ VkFormat findDepthFormat(VkPhysicalDevice physicalDevice);
 void createBuffer(const Vulking::PhysicalDevice &physicalDevice,
                   const Vulking::Device &device, VkDeviceSize size,
                   VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                  VkBuffer &buffer, VkDeviceMemory &memory);
+                  VkBuffer &buffer, VkDeviceMemory &memory,
+                  const char *name = "unnamed");
 
 void copyBuffer(const Vulking::Device &device,
                 const Vulking::CommandPool &commandPool,

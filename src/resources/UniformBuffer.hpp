@@ -17,7 +17,7 @@ public:
                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                              buffer, memory);
+                              buffer, memory, "uniform_buffer");
     CHK(vkMapMemory(device, memory, 0, size, 0, &data),
         "failed to map uniform buffer memory");
   };

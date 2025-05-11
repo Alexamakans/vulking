@@ -124,7 +124,8 @@ void VulkingUtil::createBuffer(const Vulking::PhysicalDevice &physicalDevice,
                                const Vulking::Device &device, VkDeviceSize size,
                                VkBufferUsageFlags usage,
                                VkMemoryPropertyFlags properties,
-                               VkBuffer &buffer, VkDeviceMemory &memory) {
+                               VkBuffer &buffer, VkDeviceMemory &memory,
+                               const char *name) {
   VkBufferCreateInfo bufferInfo{};
   bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bufferInfo.size = size;
@@ -148,6 +149,8 @@ void VulkingUtil::createBuffer(const Vulking::PhysicalDevice &physicalDevice,
   }
 
   vkBindBufferMemory(device, buffer, memory, 0);
+
+  NAME_OBJECT(device, VK_OBJECT_TYPE_BUFFER, (VkBuffer)buffer, name);
 }
 
 void VulkingUtil::copyBuffer(const Vulking::Device &device,
