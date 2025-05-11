@@ -36,7 +36,8 @@ Vulking::Texture::Texture(const PhysicalDevice &physicalDevice,
       device, commandPool, queue, image, format, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
   VulkingUtil::copyBufferToImage(device, commandPool, queue, stagingBuffer,
-                                 image, width, height);
+                                 image, static_cast<uint32_t>(width),
+                                 static_cast<uint32_t>(height));
 
   VulkingUtil::generateMipmaps(physicalDevice, device, commandPool, queue,
                                image, format, width, height, mipLevels);

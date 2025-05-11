@@ -55,7 +55,7 @@ Vulking::DescriptorPool::allocateSets(
       write.dstSet = sets[i];
     }
 
-    allWrites.emplace_back(writes);
+    allWrites.push_back(writes);
   }
 
   return allWrites;

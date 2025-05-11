@@ -186,7 +186,7 @@ public:
 
 private:
   void init() {
-    uint32_t maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    const uint32_t maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     for (uint32_t i = 0; i < maxSets; i++) {
       uniformBuffers.push_back(
