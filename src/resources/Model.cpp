@@ -9,7 +9,21 @@ Vulking::Model::Model(const PhysicalDevice &physicalDevice,
     : physicalDevice(physicalDevice), device(device) {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
+  // std::vector<Vertex> vertices = {
+  //     //  pos             uv
+  //     {{-1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, //
+  //     bottom-left
+  //     {{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},  //
+  //     bottom-right
+  //     {{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},   // top-right
+  //     {{-1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},  // top-left
+  // };
 
+  // Two triangles (6 indices)
+  // std::vector<uint32_t> indices = {
+  //    0, 1, 2, // first triangle
+  //    2, 3, 0, // second triangle
+  //};
   VulkingUtil::loadModel(path, vertices, indices);
   numVertices = static_cast<uint32_t>(vertices.size());
   numIndices = static_cast<uint32_t>(indices.size());

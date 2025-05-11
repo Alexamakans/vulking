@@ -104,7 +104,7 @@ void Vulking::PhysicalDevice::init() {
   vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
                                        surfaceFormats.data());
 
-  VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+  VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(surfaceFormats);
   format = surfaceFormat.format;
   depthFormat = VulkingUtil::findDepthFormat(physicalDevice);
   extent = capabilities.currentExtent;
@@ -112,6 +112,19 @@ void Vulking::PhysicalDevice::init() {
   // Choose present mode (FIFO is guaranteed to be supported)
   presentMode = VK_PRESENT_MODE_FIFO_KHR;
 }
+
+VkSurfaceFormatKHR Vulking::PhysicalDevice::chooseSurfaceFormat(
+    const std::vector<VkSurfaceFormatKHR> &availableFormats) {
+  for (const auto &availableFormat : availableFormats) {
+    if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+        availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+      return availableFormat;
+    }
+  }
+
+  return availableFormats[0];
+}
+
 
 VkFormat Vulking::PhysicalDevice::getFormat() const { return format; }
 VkFormat Vulking::PhysicalDevice::getDepthFormat() const { return depthFormat; }

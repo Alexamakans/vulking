@@ -29,6 +29,9 @@ public:
   operator VkPhysicalDevice() const;
   void init();
 
+  VkSurfaceFormatKHR
+  chooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+
   VkPhysicalDeviceProperties getProperties() const;
   VkPhysicalDeviceFeatures getFeatures() const;
   VkFormat getFormat() const;

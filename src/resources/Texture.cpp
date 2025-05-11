@@ -46,6 +46,11 @@ Vulking::Texture::Texture(const PhysicalDevice &physicalDevice,
                                       VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 
   createSampler(physicalDevice, device);
+
+  NAME_OBJECT(device, VK_OBJECT_TYPE_IMAGE, image, "texture_image");
+  NAME_OBJECT(device, VK_OBJECT_TYPE_IMAGE_VIEW, view, "texture_view");
+  NAME_OBJECT(device, VK_OBJECT_TYPE_DEVICE_MEMORY, memory, "texture_memory");
+  NAME_OBJECT(device, VK_OBJECT_TYPE_SAMPLER, sampler, "texture_sampler");
 }
 
 void Vulking::Texture::createSampler(const PhysicalDevice &physicalDevice,
