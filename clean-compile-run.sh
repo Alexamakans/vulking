@@ -28,4 +28,5 @@ if [ -L ./compile_commands.json ]; then
 fi
 ln -s ./build/compile_commands.json ./compile_commands.json
 
+./build/tests --durations yes --allow-running-no-tests "~[never_run]"
 ./build/vulking

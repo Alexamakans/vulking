@@ -23,6 +23,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # -ftrivial-auto-var-init-stop-after=100000)
 
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
+foreach(file ${SRC_FILES})
+  if(file MATCHES ".*test_.*\\.cpp$")
+    list(REMOVE_ITEM SRC_FILES ${file})
+  endif()
+endforeach()
 
 add_executable(vulking ${SRC_FILES})
 
@@ -39,3 +44,16 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets"
           "$<TARGET_FILE_DIR:vulking>/assets"
   COMMENT "Copying assets directory to build output")
+
+file(GLOB_RECURSE TEST_SRC_FILES "src/test_*.cpp")
+add_executable(tests ${TEST_SRC_FILES})
+include(FetchContent)
+FetchContent_Declare(
+  catch2 URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.8.1.zip)
+FetchContent_MakeAvailable(catch2)
+target_include_directories(tests PRIVATE ${catch2_SOURCE_DIR}/src)
+target_link_libraries(tests Catch2::Catch2WithMain)
+enable_testing()
+include(CTest)
+include(Catch)
+catch_discover_tests(tests)
