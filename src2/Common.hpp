@@ -73,9 +73,9 @@ inline const char *vkResultToString(VkResult result) {
   do {                                                                         \
     VkResult _vk_result = (expr);                                              \
     if (_vk_result != VK_SUCCESS) {                                            \
-      throw std::runtime_error(std::format("{}:{} >{} (VkResult: {})",         \
-                                           __FILE__, __LINE__, msg,            \
-                                           vkResultToString(_vk_result)));     \
+      throw std::runtime_error(std::format(                                    \
+          "{}:{} [{}] >{} (VkResult: {})", __FILE__, __LINE__,                 \
+          __PRETTY_FUNCTION__, msg, vkResultToString(_vk_result)));            \
     }                                                                          \
   } while (0)
 
@@ -148,3 +148,9 @@ static std::vector<char> readFile(const std::string &filename) {
 
   return buffer;
 }
+
+#define MOVE_ONLY(T)                                                           \
+  T(const T &) = delete;                                                       \
+  T &operator=(const T &) = delete;                                            \
+  T(T &&other) noexcept = default;                                             \
+  T &operator=(T &&other) noexcept = default;

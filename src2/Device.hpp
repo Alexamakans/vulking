@@ -10,7 +10,9 @@ public:
   Device() = default;
   Device(PhysicalDevice physicalDevice);
 
-  void destroy() { vkDestroyDevice(device, ALLOCATOR); }
+  MOVE_ONLY(Device);
+
+  void destroy();
 
   operator VkDevice() const;
 

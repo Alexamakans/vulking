@@ -23,6 +23,11 @@ VkSampleCountFlagBits Vulking::PhysicalDevice::getMsaaSamples() const {
   return msaaSamples;
 }
 
+const VkPhysicalDeviceProperties &
+Vulking::PhysicalDevice::getProperties() const {
+  return properties;
+}
+
 VkFormat Vulking::PhysicalDevice::findSupportedFormat(
     const std::vector<VkFormat> &candidates, VkImageTiling tiling,
     VkFormatFeatureFlags features) const {
@@ -43,6 +48,8 @@ VkFormat Vulking::PhysicalDevice::findSupportedFormat(
 }
 
 void Vulking::PhysicalDevice::init(VkSurfaceKHR surface) {
+  vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
   msaaSamples = getMaxUsableMsaaSamples();
 
   queueFamilyIndices = getQueueFamilyIndices(surface);
@@ -112,13 +119,8 @@ Vulking::PhysicalDevice::getQueueFamilyIndices(VkSurfaceKHR surface) {
 }
 
 VkSampleCountFlagBits Vulking::PhysicalDevice::getMaxUsableMsaaSamples() const {
-
-  VkPhysicalDeviceProperties physicalDeviceProperties;
-  vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-  VkSampleCountFlags counts =
-      physicalDeviceProperties.limits.framebufferColorSampleCounts &
-      physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+  VkSampleCountFlags counts = properties.limits.framebufferColorSampleCounts &
+                              properties.limits.framebufferDepthSampleCounts;
   if (counts & VK_SAMPLE_COUNT_64_BIT) {
     return VK_SAMPLE_COUNT_64_BIT;
   }
@@ -150,4 +152,3 @@ VkFormat Vulking::PhysicalDevice::findDepthFormat() {
       },
       VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
-

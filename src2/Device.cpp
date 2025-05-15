@@ -55,6 +55,8 @@ Vulking::Device::Device(PhysicalDevice physicalDevice)
   vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 };
 
+void Vulking::Device::destroy() { vkDestroyDevice(device, ALLOCATOR); }
+
 Vulking::Device::operator VkDevice() const { return device; }
 
 const Vulking::PhysicalDevice &Vulking::Device::getPhysical() const {

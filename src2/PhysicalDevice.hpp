@@ -34,6 +34,7 @@ public:
   VkExtent2D getExtent() const;
   VkPresentModeKHR getPresentMode() const;
   VkSampleCountFlagBits getMsaaSamples() const;
+  const VkPhysicalDeviceProperties &getProperties() const;
 
   VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
                                VkImageTiling tiling,
@@ -66,6 +67,7 @@ private:
   // FIFO is guaranteed to be supported
   VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
   VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+  VkPhysicalDeviceProperties properties;
 
   void init(VkSurfaceKHR surface);
 

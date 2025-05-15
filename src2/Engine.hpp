@@ -4,6 +4,7 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include "PhysicalDevice.hpp"
+#include <limits>
 #include <vulkan/vulkan_core.h>
 
 #define VULKING_MAKE_VERSION(major, minor, patch)                              \
@@ -31,13 +32,15 @@ public:
          uint32_t applicationVersion,
          std::vector<const char *> &requiredExtensions);
 
-  ~Engine() {
-    device.destroy();
-    vkDestroyInstance(instance, ALLOCATOR);
-  }
+  ~Engine();
 
-  Sampler createSampler();
-  Buffer createBuffer();
+  VkSamplerCreateInfo &defaultSamplerInfo();
+  Sampler createSampler(const VkSamplerCreateInfo &info);
+
+  Buffer createBuffer(void *src, VkDeviceSize size, VkBufferUsageFlags usage,
+                      VkMemoryPropertyFlags properties,
+                      const char *name = "unnamed");
+
   Image createImage();
   ImageView createImageView();
   CommandBuffer createCommandBuffer();

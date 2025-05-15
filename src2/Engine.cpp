@@ -39,6 +39,51 @@ Vulking::Engine::createInstance(const char *applicationInfo,
   return _instance;
 }
 
+Vulking::Engine::~Engine() {
+  device.destroy();
+  vkDestroyInstance(instance, ALLOCATOR);
+}
+
+VkSamplerCreateInfo &Vulking::Engine::defaultSamplerInfo() {
+  static VkSamplerCreateInfo info{
+      .sType = STYPE(SAMPLER_CREATE_INFO),
+      .pNext = nullptr,
+      .flags = 0,
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .mipLodBias = 0.0f,
+      .anisotropyEnable = VK_TRUE,
+      .maxAnisotropy =
+          physicalDevice.getProperties().limits.maxSamplerAnisotropy,
+      .compareEnable = VK_FALSE,
+      .compareOp = VK_COMPARE_OP_ALWAYS,
+      .minLod = 0.0f,
+      .maxLod = std::numeric_limits<float>::max(),
+      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+      .unnormalizedCoordinates = VK_FALSE,
+  };
+
+  return info;
+}
+
+Sampler Vulking::Engine::createSampler(const VkSamplerCreateInfo &info) {
+  Sampler sampler{};
+  CHK(vkCreateSampler(device, &info, ALLOCATOR, &sampler),
+      "failed to create sampler");
+  return sampler;
+}
+
+Vulking::Buffer Vulking::Engine::createBuffer(void *src, VkDeviceSize size,
+                                              VkBufferUsageFlags usage,
+                                              VkMemoryPropertyFlags properties,
+                                              const char *name) {
+  return Buffer(device, src, size, usage, properties, name);
+}
+
 VkPhysicalDevice
 Vulking::Engine::getSuitablePhysicalDevice(VkInstance instance) {
   assert(instance != VK_NULL_HANDLE);
@@ -68,13 +113,13 @@ bool Vulking::Engine::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
   VkPhysicalDeviceProperties props;
   vkGetPhysicalDeviceProperties(physicalDevice, &props);
 
-  std::cout << "Device properties:\n";
-  std::cout << "\t" << props.vendorID << "\n";
-  std::cout << "\t" << props.deviceType << "\n";
-  std::cout << "\t" << props.deviceID << "\n";
-  std::cout << "\t" << props.apiVersion << "\n";
-  std::cout << "\t" << props.driverVersion << "\n";
-  std::cout << "\t" << props.deviceName << std::endl;
+  std::cout << "GPU Device properties:\n";
+  std::cout << "\t vendorID = " << props.vendorID << "\n";
+  std::cout << "\t deviceType = " << props.deviceType << "\n";
+  std::cout << "\t deviceID = " << props.deviceID << "\n";
+  std::cout << "\t apiVersion = " << props.apiVersion << "\n";
+  std::cout << "\t driverVersion = " << props.driverVersion << "\n";
+  std::cout << "\t deviceName = " << props.deviceName << std::endl;
 
   return props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
          props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;

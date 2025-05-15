@@ -1,7 +1,7 @@
 #include "Buffer.hpp"
 #include <vulkan/vulkan_core.h>
 
-Vulking::Buffer::Buffer(Device device, void *src, VkDeviceSize size,
+Vulking::Buffer::Buffer(const Device &device, void *src, VkDeviceSize size,
                         VkBufferUsageFlags usage,
                         VkMemoryPropertyFlags properties, const char *name)
     : device(device), size(size) {
@@ -34,6 +34,16 @@ Vulking::Buffer::Buffer(Device device, void *src, VkDeviceSize size,
               std::format("{}_memory", name));
 }
 
+Vulking::Buffer::~Buffer() {
+  assert(buffer != VK_NULL_HANDLE);
+  vkDestroyBuffer(device, buffer, ALLOCATOR);
+  buffer = VK_NULL_HANDLE;
+
+  assert(memory != VK_NULL_HANDLE);
+  vkFreeMemory(device, memory, ALLOCATOR);
+  memory = VK_NULL_HANDLE;
+}
+
 bool Vulking::Buffer::isMapped() const { return data != nullptr; }
 
 void Vulking::Buffer::map() {
@@ -44,7 +54,7 @@ void Vulking::Buffer::map() {
 
 void Vulking::Buffer::set(void *src, size_t size) const {
   assert(isMapped());
-  if (size <= this->size) {
+  if (static_cast<VkDeviceSize>(size) > this->size) {
     throw std::runtime_error(
         std::format("size ({}) too large, must be <= {}", size, this->size));
   }
