@@ -20,7 +20,7 @@
 #include <stdexcept>
 #include <vector>
 
-inline const char *vkResultToString(VkResult result) {
+static const char *vkResultToString(VkResult result) {
   switch (result) {
   case VK_SUCCESS:
     return "VK_SUCCESS";

@@ -3,6 +3,7 @@
 #include "Buffer.hpp"
 #include "Common.hpp"
 #include "Device.hpp"
+#include "Image.hpp"
 #include "PhysicalDevice.hpp"
 #include <limits>
 #include <vulkan/vulkan_core.h>
@@ -16,8 +17,6 @@ using Sampler = VkSampler;
 using Fence = VkFence;
 using Semaphore = VkSemaphore;
 using CommandBuffer = VkCommandBuffer;
-using Image = VkImage;
-using ImageView = VkImageView;
 using Swapchain = VkSwapchainKHR;
 using Pipeline = VkPipeline;
 
@@ -30,7 +29,7 @@ class Engine {
 public:
   Engine(GLFWwindow *window, const char *applicationInfo,
          uint32_t applicationVersion,
-         std::vector<const char *> &requiredExtensions);
+         const std::vector<const char *> &requiredExtensions);
 
   ~Engine();
 
@@ -41,18 +40,18 @@ public:
                       VkMemoryPropertyFlags properties,
                       const char *name = "unnamed");
 
-  Image createImage();
-  ImageView createImageView();
   CommandBuffer createCommandBuffer();
 
-  // Pipeline is so huge that it should have a builder util or something
+  // TODO: Pipeline is so huge that it should have a builder util or something
   // probably, with sane defaults.
+  //
+  // Look at ImageBuilder for inspiration?
   Pipeline createPipeline();
 
 private:
-  VkInstance createInstance(const char *applicationInfo,
-                            uint32_t applicationVersion,
-                            std::vector<const char *> &requiredExtensions);
+  VkInstance
+  createInstance(const char *applicationInfo, uint32_t applicationVersion,
+                 const std::vector<const char *> &requiredExtensions);
 
   VkInstance instance;
   VkSurfaceKHR surface;

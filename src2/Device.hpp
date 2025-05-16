@@ -7,10 +7,10 @@
 namespace Vulking {
 class Device {
 public:
+  MOVE_ONLY(Device);
+
   Device() = default;
   Device(PhysicalDevice physicalDevice);
-
-  MOVE_ONLY(Device);
 
   void destroy();
 

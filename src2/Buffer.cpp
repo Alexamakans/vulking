@@ -44,25 +44,23 @@ Vulking::Buffer::~Buffer() {
   memory = VK_NULL_HANDLE;
 }
 
-bool Vulking::Buffer::isMapped() const { return data != nullptr; }
+void Vulking::Buffer::map() { mapTo(&pData); }
 
-void Vulking::Buffer::map() {
-  assert(!isMapped());
-  CHK(vkMapMemory(device, memory, 0, size, 0, &data),
+void Vulking::Buffer::mapTo(void **mapped) {
+  CHK(vkMapMemory(device, memory, 0, size, 0, mapped),
       "failed to map buffer memory");
+  pData = *mapped;
 }
 
 void Vulking::Buffer::set(void *src, size_t size) const {
-  assert(isMapped());
   if (static_cast<VkDeviceSize>(size) > this->size) {
     throw std::runtime_error(
         std::format("size ({}) too large, must be <= {}", size, this->size));
   }
-  memcpy(data, src, size);
+  memcpy(pData, src, size);
 }
 
 void Vulking::Buffer::unmap() {
-  assert(isMapped());
   vkUnmapMemory(device, memory);
-  data = nullptr;
+  pData = nullptr;
 }

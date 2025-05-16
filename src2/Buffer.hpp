@@ -8,15 +8,16 @@
 namespace Vulking {
 class Buffer {
 public:
+  MOVE_ONLY(Buffer);
+
   Buffer(const Device &device, void *src, VkDeviceSize size,
          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
          const char *name = "unnamed");
   ~Buffer();
 
-  MOVE_ONLY(Buffer);
-
   bool isMapped() const;
   void map();
+  void mapTo(void **mapped);
   void set(void *src, size_t size) const;
   void unmap();
 
@@ -37,9 +38,10 @@ public:
 
 private:
   VkDevice device;
+
   VkDeviceSize size;
   VkBuffer buffer;
   VkDeviceMemory memory;
-  void *data = nullptr;
+  void *pData = nullptr;
 };
 } // namespace Vulking

@@ -8,7 +8,7 @@
 
 Vulking::Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                         uint32_t applicationVersion,
-                        std::vector<const char *> &requiredExtensions) {
+                        const std::vector<const char *> &requiredExtensions) {
   instance =
       createInstance(applicationInfo, applicationVersion, requiredExtensions);
   CHK(glfwCreateWindowSurface(instance, window, ALLOCATOR, &surface),
@@ -17,10 +17,9 @@ Vulking::Engine::Engine(GLFWwindow *window, const char *applicationInfo,
   device = Device(physicalDevice);
 }
 
-VkInstance
-Vulking::Engine::createInstance(const char *applicationInfo,
-                                uint32_t applicationVersion,
-                                std::vector<const char *> &requiredExtensions) {
+VkInstance Vulking::Engine::createInstance(
+    const char *applicationInfo, uint32_t applicationVersion,
+    const std::vector<const char *> &requiredExtensions) {
   VkApplicationInfo appInfo{};
   appInfo.sType = STYPE(APPLICATION_INFO);
   appInfo.pApplicationName = applicationInfo;
