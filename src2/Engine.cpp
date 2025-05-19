@@ -29,8 +29,7 @@ Vulking::Engine::~Engine() {
   instance.release().destroy(ALLOCATOR);
 }
 
-vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderStatic>
-Vulking::Engine::createInstance(
+vk::UniqueInstance Vulking::Engine::createInstance(
     const char *applicationInfo, uint32_t applicationVersion,
     const std::vector<const char *> &requiredExtensions) {
   vk::ApplicationInfo appInfo{};
@@ -77,8 +76,8 @@ bool Vulking::Engine::isDeviceSuitable(
   return props.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ||
          props.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 }
-vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic>
-Vulking::Engine::createDevice() {
+
+vk::UniqueDevice Vulking::Engine::createDevice() {
   vk::ArrayProxy<float> queuePriorities = 1.0f;
 
   std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;

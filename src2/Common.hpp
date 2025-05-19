@@ -97,9 +97,8 @@ inline PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT = nullptr;
 
 #define NAME_OBJECT(device, handle, name) nameObject(device, handle, name)
 
-inline void _nameObject(
-    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
-    vk::ObjectType objectType, uint64_t handle, const char *name) {
+inline void _nameObject(vk::UniqueDevice &device, vk::ObjectType objectType,
+                        uint64_t handle, const char *name) {
   vk::DebugUtilsObjectNameInfoEXT info;
   info.setObjectType(objectType);
   info.setObjectHandle(handle);
@@ -111,16 +110,13 @@ inline void _nameObject(
 }
 
 template <typename T>
-inline void nameObject(
-    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
-    T handle, const char *name) {
+inline void nameObject(vk::UniqueDevice &device, T handle, const char *name) {
   _nameObject(device, handle.objectType, getVulkanHandle(handle), name);
 }
 
 template <typename T>
-inline void nameObject(
-    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
-    T handle, const std::string &name) {
+inline void nameObject(vk::UniqueDevice &device, T handle,
+                       const std::string &name) {
   _nameObject(device, handle.objectType, getVulkanHandle(handle), name.c_str());
 }
 

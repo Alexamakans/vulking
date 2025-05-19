@@ -46,17 +46,16 @@ public:
   // Look at ImageBuilder for inspiration?
   Pipeline createPipeline();
 
-  static vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderStatic>
-      instance;
+  static vk::UniqueInstance instance;
   static vk::PhysicalDevice physicalDevice;
-  static vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> device;
+  static vk::UniqueDevice device;
 
 private:
-  vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderStatic>
+  vk::UniqueInstance
   createInstance(const char *applicationInfo, uint32_t applicationVersion,
                  const std::vector<const char *> &requiredExtensions);
 
-  vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> createDevice();
+  vk::UniqueDevice createDevice();
 
   vk::SurfaceKHR surface;
 
