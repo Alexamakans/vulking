@@ -1,27 +1,25 @@
 #pragma once
 
-#include "Buffer.hpp"
 #include "Common.hpp"
-#include "Device.hpp"
-#include "Image.hpp"
-#include "PhysicalDevice.hpp"
-#include <limits>
+
+#include "Buffer.hpp"
+#include <vulkan/vulkan.hpp>
 
 #define VULKING_MAKE_VERSION(major, minor, patch)                              \
   VK_MAKE_VERSION(major, minor, patch)
 
-using Instance = VkInstance;
-using Queue = VkQueue;
-using Sampler = VkSampler;
-using Fence = VkFence;
-using Semaphore = VkSemaphore;
-using CommandBuffer = VkCommandBuffer;
-using Swapchain = VkSwapchainKHR;
-using Pipeline = VkPipeline;
+using Instance = vk::Instance;
+using Queue = vk::Queue;
+using Sampler = vk::Sampler;
+using Fence = vk::Fence;
+using Semaphore = vk::Semaphore;
+using CommandBuffer = vk::CommandBuffer;
+using Swapchain = vk::SwapchainKHR;
+using Pipeline = vk::Pipeline;
 
 // ShaderModule can be released after the creation of the pipelines it's used
 // in.
-using ShaderModule = VkShaderModule;
+using ShaderModule = vk::ShaderModule;
 
 namespace Vulking {
 class Engine {
@@ -32,11 +30,12 @@ public:
 
   ~Engine();
 
-  VkSamplerCreateInfo &defaultSamplerInfo();
-  Sampler createSampler(const VkSamplerCreateInfo &info);
+  vk::SamplerCreateInfo &defaultSamplerInfo();
+  Sampler createSampler(const vk::SamplerCreateInfo &info);
 
-  Buffer createBuffer(void *src, VkDeviceSize size, VkBufferUsageFlags usage,
-                      VkMemoryPropertyFlags properties,
+  Buffer createBuffer(void *src, vk::DeviceSize size,
+                      vk::BufferUsageFlags usage,
+                      vk::MemoryPropertyFlags properties,
                       const char *name = "unnamed");
 
   CommandBuffer createCommandBuffer();
@@ -47,23 +46,27 @@ public:
   // Look at ImageBuilder for inspiration?
   Pipeline createPipeline();
 
+  static vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderStatic>
+      instance;
+  static vk::PhysicalDevice physicalDevice;
+  static vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> device;
+
 private:
-  VkInstance
+  vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderStatic>
   createInstance(const char *applicationInfo, uint32_t applicationVersion,
                  const std::vector<const char *> &requiredExtensions);
 
-  VkInstance instance;
-  VkSurfaceKHR surface;
+  vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> createDevice();
 
-  PhysicalDevice physicalDevice;
-  Device device;
-  VkCommandPool commandPool;
-  VkDescriptorPool descriptorPool;
+  vk::SurfaceKHR surface;
+
+  vk::CommandPool commandPool;
+  vk::DescriptorPool descriptorPool;
 
   uint32_t graphicsQueueFamily;
   uint32_t presentQueueFamily;
 
-  VkPhysicalDevice getSuitablePhysicalDevice(VkInstance instance);
-  bool isDeviceSuitable(VkPhysicalDevice physicalDevice) const;
+  vk::PhysicalDevice getSuitablePhysicalDevice();
+  bool isDeviceSuitable(vk::PhysicalDevice physicalDevice) const;
 };
 } // namespace Vulking

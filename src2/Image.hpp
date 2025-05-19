@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.hpp"
-#include "Device.hpp"
+#include "Engine.hpp"
 
 namespace Vulking {
 class Image {
@@ -9,71 +9,63 @@ public:
   MOVE_ONLY(Image);
 
   Image() = default;
-  Image(const Device &device, VkImageCreateInfo info,
-        VkMemoryPropertyFlags memoryProperties, const char *name = "unnamed") {
-    init(device, info, memoryProperties, name);
+  Image(vk::ImageCreateInfo info, vk::MemoryPropertyFlags memoryProperties,
+        const char *name = "unnamed") {
+    init(info, memoryProperties, name);
   };
-  Image(const Device &device, uint32_t width, uint32_t height,
-        uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format,
-        VkImageTiling tiling, VkImageUsageFlags usage,
-        VkMemoryPropertyFlags memoryProperties, const char *name = "unnamed")
-      : device(device) {
-    VkImageCreateInfo info{};
-    info.sType = STYPE(IMAGE_CREATE_INFO);
-    info.imageType = VK_IMAGE_TYPE_2D;
-    info.extent.width = width;
-    info.extent.height = height;
-    info.mipLevels = mipLevels;
-    info.arrayLayers = 1;
-    info.format = format;
-    info.tiling = tiling;
-    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    info.usage = usage;
-    info.samples = numSamples;
-    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  Image(uint32_t width, uint32_t height, uint32_t mipLevels,
+        vk::SampleCountFlagBits samples, vk::Format format,
+        vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+        vk::MemoryPropertyFlags memoryProperties,
+        const char *name = "unnamed") {
+    vk::ImageCreateInfo info;
+    info.setImageType(vk::ImageType::e2D)
+        .setExtent(vk::Extent3D(width, height))
+        .setMipLevels(mipLevels)
+        .setArrayLayers(1)
+        .setFormat(format)
+        .setTiling(tiling)
+        .setInitialLayout(vk::ImageLayout::eUndefined)
+        .setUsage(usage)
+        .setSamples(samples)
+        .setSharingMode(vk::SharingMode::eExclusive);
 
-    init(device, info, memoryProperties, name);
+    init(info, memoryProperties, name);
   };
 
   ~Image() {
-    if (view != VK_NULL_HANDLE) {
-      vkDestroyImageView(device, view, ALLOCATOR);
+    if (!view) {
+      Engine::device->destroyImageView(view, ALLOCATOR);
     }
-    vkDestroyImage(device, image, ALLOCATOR);
-    vkFreeMemory(device, memory, ALLOCATOR);
+    Engine::device->destroyImage(image, ALLOCATOR);
+    Engine::device->freeMemory(memory, ALLOCATOR);
   }
 
   // TODO: Implement createImageView
-  VkImageView createImageView();
-  VkImageView view = VK_NULL_HANDLE;
+  vk::ImageView createImageView();
+  vk::ImageView view = VK_NULL_HANDLE;
 
 private:
-  void init(const Device &device, VkImageCreateInfo info,
-            VkMemoryPropertyFlags memoryProperties, const char *name) {
-    CHK(vkCreateImage(device, &info, ALLOCATOR, &image),
-        std::format("failed to create {}_image", name));
-    NAME_OBJECT(device, VK_OBJECT_TYPE_IMAGE, image, name);
+  void init(vk::ImageCreateInfo info, vk::MemoryPropertyFlags memoryProperties,
+            const char *name) {
+    image = Engine::device->createImage(info, ALLOCATOR);
+    NAME_OBJECT(Engine::device, image, name);
 
-    VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(device, image, &memoryRequirements);
+    auto memoryRequirements = Engine::device->getImageMemoryRequirements(image);
 
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = STYPE(MEMORY_ALLOCATE_INFO);
-    allocInfo.allocationSize = memoryRequirements.size;
-    allocInfo.memoryTypeIndex = device.getPhysical().findMemoryType(
-        memoryRequirements.memoryTypeBits, memoryProperties);
+    vk::MemoryAllocateInfo allocInfo;
+    allocInfo.setAllocationSize(memoryRequirements.size);
+    allocInfo.setMemoryTypeIndex(
+        findMemoryType(Engine::physicalDevice,
+                       memoryRequirements.memoryTypeBits, memoryProperties));
 
-    CHK(vkAllocateMemory(device, &allocInfo, ALLOCATOR, &memory),
-        std::format("failed to allocate {}_memory", name));
-    NAME_OBJECT(device, VK_OBJECT_TYPE_DEVICE_MEMORY, memory, name);
+    memory = Engine::device->allocateMemory(allocInfo, ALLOCATOR);
+    NAME_OBJECT(Engine::device, memory, name);
 
-    CHK(vkBindImageMemory(device, image, memory, 0),
-        std::format("failed to bind {}_memory to {}_image", name, name));
+    Engine::device->bindImageMemory(image, memory, 0);
   }
 
-  VkDevice device;
-
-  VkImage image;
-  VkDeviceMemory memory;
+  vk::Image image;
+  vk::DeviceMemory memory;
 };
 } // namespace Vulking

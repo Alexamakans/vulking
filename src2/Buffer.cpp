@@ -1,53 +1,45 @@
 #include "Buffer.hpp"
 
-Vulking::Buffer::Buffer(const Device &device, void *src, VkDeviceSize size,
-                        VkBufferUsageFlags usage,
-                        VkMemoryPropertyFlags properties, const char *name)
-    : device(device), size(size) {
-  assert(device != VK_NULL_HANDLE);
+#include "Common.hpp"
+#include "Engine.hpp"
+
+Vulking::Buffer::Buffer(void *src, vk::DeviceSize size,
+                        vk::BufferUsageFlags usage,
+                        vk::MemoryPropertyFlags properties, const char *name)
+    : size(size) {
   assert(size != 0);
 
-  VkBufferCreateInfo info{};
-  info.sType = STYPE(BUFFER_CREATE_INFO);
-  info.size = size;
-  info.usage = usage;
-  info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  CHK(vkCreateBuffer(device, &info, ALLOCATOR, &buffer),
-      std::format("failed to create buffer '{}_buffer'", name));
+  vk::BufferCreateInfo info{};
+  info.setSize(size);
+  info.setUsage(usage);
+  info.setSharingMode(vk::SharingMode::eExclusive);
+  auto buffer = Engine::device->createBuffer(info, ALLOCATOR);
 
-  VkMemoryRequirements memoryRequirements{};
-  vkGetBufferMemoryRequirements(device, buffer, &memoryRequirements);
+  auto memoryRequirements = Engine::device->getBufferMemoryRequirements(buffer);
 
-  VkMemoryAllocateInfo allocInfo{};
-  allocInfo.sType = STYPE(MEMORY_ALLOCATE_INFO);
-  allocInfo.allocationSize = memoryRequirements.size;
-  allocInfo.memoryTypeIndex = device.getPhysical().findMemoryType(
-      memoryRequirements.memoryTypeBits, properties);
+  vk::MemoryAllocateInfo allocInfo{};
+  allocInfo.setAllocationSize(memoryRequirements.size);
+  allocInfo.setMemoryTypeIndex(findMemoryType(
+      Engine::physicalDevice, memoryRequirements.memoryTypeBits, properties));
 
-  CHK(vkAllocateMemory(device, &allocInfo, ALLOCATOR, &memory),
-      std::format("failed to allocate buffer memory '{}_memory'", name));
+  auto memory = Engine::device->allocateMemory(allocInfo, ALLOCATOR);
 
-  NAME_OBJECT(device, VK_OBJECT_TYPE_BUFFER, buffer,
-              std::format("{}_buffer", name));
-  NAME_OBJECT(device, VK_OBJECT_TYPE_DEVICE_MEMORY, memory,
-              std::format("{}_memory", name));
+  NAME_OBJECT(Engine::device, buffer, std::format("{}_buffer", name));
+  NAME_OBJECT(Engine::device, memory, std::format("{}_memory", name));
 }
 
 Vulking::Buffer::~Buffer() {
-  assert(buffer != VK_NULL_HANDLE);
-  vkDestroyBuffer(device, buffer, ALLOCATOR);
-  buffer = VK_NULL_HANDLE;
+  assert(buffer);
+  Engine::device->destroyBuffer(buffer, ALLOCATOR);
 
-  assert(memory != VK_NULL_HANDLE);
-  vkFreeMemory(device, memory, ALLOCATOR);
-  memory = VK_NULL_HANDLE;
+  assert(memory);
+  Engine::device->freeMemory(memory, ALLOCATOR);
 }
 
 void Vulking::Buffer::map() { mapTo(&pData); }
 
 void Vulking::Buffer::mapTo(void **mapped) {
-  CHK(vkMapMemory(device, memory, 0, size, 0, mapped),
-      "failed to map buffer memory");
+  *mapped = Engine::device->mapMemory(memory, 0, size);
   pData = *mapped;
 }
 
@@ -60,6 +52,6 @@ void Vulking::Buffer::set(void *src, size_t size) const {
 }
 
 void Vulking::Buffer::unmap() {
-  vkUnmapMemory(device, memory);
+  Engine::device->unmapMemory(memory);
   pData = nullptr;
 }

@@ -11,6 +11,7 @@
 #include <GLFW/glfw3.h>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -21,63 +22,67 @@
 #include <stdexcept>
 #include <vector>
 
-static const char *vkResultToString(VkResult result) {
+template <typename T> uint64_t getVulkanHandle(T const &cppHandle) {
+  return uint64_t(static_cast<T::CType>(cppHandle));
+}
+
+static const char *vkResultToString(vk::Result result) {
   switch (result) {
-  case VK_SUCCESS:
-    return "VK_SUCCESS";
-  case VK_NOT_READY:
-    return "VK_NOT_READY";
-  case VK_TIMEOUT:
-    return "VK_TIMEOUT";
-  case VK_EVENT_SET:
-    return "VK_EVENT_SET";
-  case VK_EVENT_RESET:
-    return "VK_EVENT_RESET";
-  case VK_INCOMPLETE:
-    return "VK_INCOMPLETE";
-  case VK_ERROR_OUT_OF_HOST_MEMORY:
-    return "VK_ERROR_OUT_OF_HOST_MEMORY";
-  case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-    return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-  case VK_ERROR_INITIALIZATION_FAILED:
-    return "VK_ERROR_INITIALIZATION_FAILED";
-  case VK_ERROR_DEVICE_LOST:
-    return "VK_ERROR_DEVICE_LOST";
-  case VK_ERROR_MEMORY_MAP_FAILED:
-    return "VK_ERROR_MEMORY_MAP_FAILED";
-  case VK_ERROR_LAYER_NOT_PRESENT:
-    return "VK_ERROR_LAYER_NOT_PRESENT";
-  case VK_ERROR_EXTENSION_NOT_PRESENT:
-    return "VK_ERROR_EXTENSION_NOT_PRESENT";
-  case VK_ERROR_FEATURE_NOT_PRESENT:
-    return "VK_ERROR_FEATURE_NOT_PRESENT";
-  case VK_ERROR_INCOMPATIBLE_DRIVER:
-    return "VK_ERROR_INCOMPATIBLE_DRIVER";
-  case VK_ERROR_TOO_MANY_OBJECTS:
-    return "VK_ERROR_TOO_MANY_OBJECTS";
-  case VK_ERROR_FORMAT_NOT_SUPPORTED:
-    return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-  case VK_ERROR_SURFACE_LOST_KHR:
-    return "VK_ERROR_SURFACE_LOST_KHR";
-  case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-    return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-  case VK_ERROR_OUT_OF_POOL_MEMORY:
-    return "VK_ERROR_OUT_OF_POOL_MEMORY";
+  case vk::Result::eSuccess:
+    return "Success";
+  case vk::Result::eNotReady:
+    return "NotReady";
+  case vk::Result::eTimeout:
+    return "Timeout";
+  case vk::Result::eEventSet:
+    return "EventSet";
+  case vk::Result::eEventReset:
+    return "EventReset";
+  case vk::Result::eIncomplete:
+    return "Incomplete";
+  case vk::Result::eErrorOutOfHostMemory:
+    return "ErrorOutOfHostMemory";
+  case vk::Result::eErrorOutOfDeviceMemory:
+    return "ErrorOutOfDeviceMemory";
+  case vk::Result::eErrorInitializationFailed:
+    return "ErrorInitializationFailed";
+  case vk::Result::eErrorDeviceLost:
+    return "ErrorDeviceLost";
+  case vk::Result::eErrorMemoryMapFailed:
+    return "ErrorMemoryMapFailed";
+  case vk::Result::eErrorLayerNotPresent:
+    return "ErrorLayerNotPresent";
+  case vk::Result::eErrorExtensionNotPresent:
+    return "ErrorExtensionNotPresent";
+  case vk::Result::eErrorFeatureNotPresent:
+    return "ErrorFeatureNotPresent";
+  case vk::Result::eErrorIncompatibleDriver:
+    return "ErrorIncompatibleDriver";
+  case vk::Result::eErrorTooManyObjects:
+    return "ErrorTooManyObjects";
+  case vk::Result::eErrorFormatNotSupported:
+    return "ErrorFormatNotSupported";
+  case vk::Result::eErrorSurfaceLostKHR:
+    return "ErrorSurfaceLostKHR";
+  case vk::Result::eErrorNativeWindowInUseKHR:
+    return "ErrorNativeWindowInUseKHR";
+  case vk::Result::eErrorOutOfPoolMemory:
+    return "ErrorOutOfPoolMemory";
   // Add more as needed
   default:
     std::cout << "result: " << result << std::endl;
-    return "Unknown VkResult";
+    return "UnknownError";
   }
 }
 
 #define CHK(expr, msg)                                                         \
   do {                                                                         \
-    VkResult _vk_result = (expr);                                              \
-    if (_vk_result != VK_SUCCESS) {                                            \
-      throw std::runtime_error(std::format(                                    \
-          "{}:{} [{}] >{} (VkResult: {})", __FILE__, __LINE__,                 \
-          __PRETTY_FUNCTION__, msg, vkResultToString(_vk_result)));            \
-    }                                                                          \
+    vk::Result __result = (expr);                                              \
+    vk::detail::resultCheck(                                                   \
+        __result,                                                              \
+        std::format("{}:{} [{}] >{} (vk::Result: {})", __FILE__, __LINE__,     \
+                    __PRETTY_FUNCTION__, msg, vkResultToString(__result))      \
+            .c_str());                                                         \
   } while (0)
 
 #define STYPE(x) VK_STRUCTURE_TYPE_##x
@@ -90,34 +95,33 @@ constexpr bool enableValidationLayers = true;
 
 inline PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT = nullptr;
 
-#define NAME_OBJECT(device, type, handle, name)                                \
-  nameObject(device, type, handle, name)
+#define NAME_OBJECT(device, handle, name) nameObject(device, handle, name)
 
-inline void _nameObject(VkDevice device, VkObjectType objectType,
-                        uint64_t handle, const char *name) {
-  VkDebugUtilsObjectNameInfoEXT nameInfo = {
-      .sType = STYPE(DEBUG_UTILS_OBJECT_NAME_INFO_EXT),
-      .objectType = objectType,
-      .objectHandle = handle,
-      .pObjectName = name,
-  };
+inline void _nameObject(
+    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
+    vk::ObjectType objectType, uint64_t handle, const char *name) {
+  vk::DebugUtilsObjectNameInfoEXT info;
+  info.setObjectType(objectType);
+  info.setObjectHandle(handle);
+  info.setPObjectName(name);
 
   if (pfnSetDebugUtilsObjectNameEXT) {
-    CHK(pfnSetDebugUtilsObjectNameEXT(device, &nameInfo),
-        "failed to name object");
+    CHK(device->setDebugUtilsObjectNameEXT(&info), "failed to name object");
   }
 }
 
 template <typename T>
-inline void nameObject(VkDevice device, VkObjectType objectType, T handle,
-                       const char *name) {
-  _nameObject(device, objectType, (uint64_t)(uintptr_t)handle, name);
+inline void nameObject(
+    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
+    T handle, const char *name) {
+  _nameObject(device, handle.objectType, getVulkanHandle(handle), name);
 }
 
 template <typename T>
-inline void nameObject(VkDevice device, VkObjectType objectType, T handle,
-                       const std::string &name) {
-  _nameObject(device, objectType, (uint64_t)(uintptr_t)handle, name.c_str());
+inline void nameObject(
+    vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderStatic> &device,
+    T handle, const std::string &name) {
+  _nameObject(device, handle.objectType, getVulkanHandle(handle), name.c_str());
 }
 
 #endif
@@ -130,7 +134,7 @@ inline void nameObject(VkDevice device, VkObjectType objectType, T handle,
 #define ENABLE_SAMPLE_SHADING false
 #endif
 
-inline static const VkAllocationCallbacks *ALLOCATOR = VULKING_ALLOCATOR;
+inline static const vk::AllocationCallbacks *ALLOCATOR = VULKING_ALLOCATOR;
 
 static std::vector<char> readFile(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -155,3 +159,19 @@ static std::vector<char> readFile(const std::string &filename) {
   T &operator=(const T &) = delete;                                            \
   T(T &&other) noexcept = default;                                             \
   T &operator=(T &&other) noexcept = default;
+
+inline static uint32_t findMemoryType(vk::PhysicalDevice physicalDevice,
+                                      uint32_t typeFilter,
+                                      vk::MemoryPropertyFlags properties) {
+
+  auto memoryProperties = physicalDevice.getMemoryProperties();
+  for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) &&
+        (memoryProperties.memoryTypes[i].propertyFlags & properties) ==
+            properties) {
+      return i;
+    }
+  }
+
+  throw std::runtime_error("failed to find suitable memory type.");
+}

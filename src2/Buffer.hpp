@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common.hpp"
-#include "Device.hpp"
 #include <cstring>
 
 namespace Vulking {
@@ -9,8 +8,8 @@ class Buffer {
 public:
   MOVE_ONLY(Buffer);
 
-  Buffer(const Device &device, void *src, VkDeviceSize size,
-         VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+  Buffer(void *src, vk::DeviceSize size,
+         vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
          const char *name = "unnamed");
   ~Buffer();
 
@@ -21,26 +20,24 @@ public:
   void unmap();
 
   struct Usage {
-    static constexpr VkBufferUsageFlags STAGING =
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    static constexpr VkBufferUsageFlags FINAL =
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    static constexpr vk::BufferUsageFlags STAGING =
+        vk::BufferUsageFlagBits::eTransferSrc;
+    static constexpr vk::BufferUsageFlags FINAL =
+        vk::BufferUsageFlagBits::eTransferDst;
   };
 
   struct Memory {
-    static constexpr VkMemoryPropertyFlags STAGING =
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    static constexpr VkMemoryPropertyFlags FINAL =
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    static constexpr vk::MemoryPropertyFlags STAGING =
+        vk::MemoryPropertyFlagBits::eHostVisible |
+        vk::MemoryPropertyFlagBits::eHostCoherent;
+    static constexpr vk::MemoryPropertyFlags FINAL =
+        vk::MemoryPropertyFlagBits::eDeviceLocal;
   };
 
 private:
-  VkDevice device;
-
-  VkDeviceSize size;
-  VkBuffer buffer;
-  VkDeviceMemory memory;
+  vk::DeviceSize size;
+  vk::Buffer buffer;
+  vk::DeviceMemory memory;
   void *pData = nullptr;
 };
 } // namespace Vulking
