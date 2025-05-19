@@ -6,7 +6,6 @@
 #include "Image.hpp"
 #include "PhysicalDevice.hpp"
 #include <limits>
-#include <vulkan/vulkan_core.h>
 
 #define VULKING_MAKE_VERSION(major, minor, patch)                              \
   VK_MAKE_VERSION(major, minor, patch)

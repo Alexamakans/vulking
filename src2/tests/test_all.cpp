@@ -1,11 +1,8 @@
-#include "../Common.hpp"
 #include "../Engine.hpp"
 #include "../Util.hpp"
-#include "catch2/catch_test_macros.hpp"
 
-#include <GLFW/glfw3.h>
 #include <catch2/catch_all.hpp>
-#include <vulkan/vulkan_core.h>
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Engine engines", "[e2e]") {
   // Create window

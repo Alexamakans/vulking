@@ -2,7 +2,6 @@
 
 #include "Common.hpp"
 #include "Device.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace Vulking {
 class Image {

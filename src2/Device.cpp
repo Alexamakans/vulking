@@ -1,5 +1,4 @@
 #include "Device.hpp"
-
 #include "Constants.hpp"
 #include "PhysicalDevice.hpp"
 

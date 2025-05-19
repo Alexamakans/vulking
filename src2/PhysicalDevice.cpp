@@ -1,4 +1,5 @@
 #include "PhysicalDevice.hpp"
+
 Vulking::PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice,
                                         VkSurfaceKHR surface)
     : physicalDevice(physicalDevice) {

@@ -1,5 +1,4 @@
 #include "Buffer.hpp"
-#include <vulkan/vulkan_core.h>
 
 Vulking::Buffer::Buffer(const Device &device, void *src, VkDeviceSize size,
                         VkBufferUsageFlags usage,

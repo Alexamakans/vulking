@@ -3,7 +3,6 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include <cstring>
-#include <vulkan/vulkan_core.h>
 
 namespace Vulking {
 class Buffer {

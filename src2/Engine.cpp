@@ -1,10 +1,8 @@
 #include "Engine.hpp"
-
 #include "Device.hpp"
 
 #include <cassert>
 #include <iostream>
-#include <vulkan/vulkan_core.h>
 
 Vulking::Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                         uint32_t applicationVersion,

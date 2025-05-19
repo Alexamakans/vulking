@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common.hpp"
-#include <GLFW/glfw3.h>
 
 static std::string glfwErrorCodeToString(int code) {
   switch (code) {
