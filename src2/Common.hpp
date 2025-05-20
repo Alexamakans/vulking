@@ -93,7 +93,8 @@ constexpr bool enableValidationLayers = false;
 #else
 constexpr bool enableValidationLayers = true;
 
-inline PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT = nullptr;
+// Initialized by Engine in constructor
+inline vk::detail::DispatchLoaderDynamic DYNAMIC_DISPATCHER;
 
 #define NAME_OBJECT(device, handle, name) nameObject(device, handle, name)
 
@@ -104,9 +105,8 @@ inline void _nameObject(vk::UniqueDevice &device, vk::ObjectType objectType,
   info.setObjectHandle(handle);
   info.setPObjectName(name);
 
-  if (pfnSetDebugUtilsObjectNameEXT) {
-    CHK(device->setDebugUtilsObjectNameEXT(&info), "failed to name object");
-  }
+  CHK(device->setDebugUtilsObjectNameEXT(&info, DYNAMIC_DISPATCHER),
+      "failed to name object");
 }
 
 template <typename T>
@@ -119,8 +119,7 @@ inline void nameObject(vk::UniqueDevice &device, T handle,
                        const std::string &name) {
   _nameObject(device, handle.objectType, getVulkanHandle(handle), name.c_str());
 }
-
-#endif
+#endif // ifdef NDEBUG
 
 #ifndef VULKING_ALLOCATOR
 #define VULKING_ALLOCATOR nullptr

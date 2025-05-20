@@ -5,33 +5,56 @@
 #include <cassert>
 #include <iostream>
 #include <set>
-#include <vulkan/vulkan.hpp>
 
-Vulking::Engine::Engine(GLFWwindow *window, const char *applicationInfo,
-                        uint32_t applicationVersion,
-                        const std::vector<const char *> &requiredExtensions) {
-  instance =
+namespace Vulking {
+
+vk::UniqueInstance Engine::instance;
+vk::PhysicalDevice Engine::physicalDevice;
+vk::UniqueDevice Engine::device;
+vk::CommandPool Engine::commandPool;
+vk::DescriptorPool Engine::descriptorPool;
+
+Engine::Engine(GLFWwindow *window, const char *applicationInfo,
+               uint32_t applicationVersion,
+               const std::vector<const char *> &requiredExtensions) {
+  Engine::instance =
       createInstance(applicationInfo, applicationVersion, requiredExtensions);
+
   VkSurfaceKHR _surface;
   VkResult result = glfwCreateWindowSurface(
-      (VkInstance)getVulkanHandle(instance), window, nullptr, &_surface);
+      (VkInstance)getVulkanHandle(instance.get()), window, nullptr, &_surface);
   if (result != VK_SUCCESS) {
     throw std::runtime_error("failed to create window surface");
   }
   surface = vk::SurfaceKHR(_surface);
 
-  physicalDevice = getSuitablePhysicalDevice();
-  device = createDevice();
+  Engine::physicalDevice = getSuitablePhysicalDevice();
+  Engine::device = createDevice();
+  DYNAMIC_DISPATCHER = vk::detail::DispatchLoaderDynamic(
+      instance.get(), vkGetInstanceProcAddr, device.get(), vkGetDeviceProcAddr);
 }
 
-Vulking::Engine::~Engine() {
+Engine::~Engine() {
   device.release().destroy();
   instance.release().destroy(ALLOCATOR);
 }
 
-vk::UniqueInstance Vulking::Engine::createInstance(
-    const char *applicationInfo, uint32_t applicationVersion,
-    const std::vector<const char *> &requiredExtensions) {
+vk::CommandBuffer Engine::beginCommand() {
+  vk::CommandBufferAllocateInfo info;
+  info.setCommandPool(commandPool);
+  info.setLevel(vk::CommandBufferLevel::ePrimary);
+  info.setCommandBufferCount(1);
+  auto commandBuffer = device->allocateCommandBuffers(info).front();
+
+  vk::CommandBufferBeginInfo beginInfo;
+  beginInfo.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+  commandBuffer.begin(beginInfo);
+  return commandBuffer;
+}
+
+vk::UniqueInstance
+Engine::createInstance(const char *applicationInfo, uint32_t applicationVersion,
+                       const std::vector<const char *> &requiredExtensions) {
   vk::ApplicationInfo appInfo{};
   appInfo.setPApplicationName(applicationInfo);
   appInfo.setApplicationVersion(applicationVersion);
@@ -41,14 +64,16 @@ vk::UniqueInstance Vulking::Engine::createInstance(
   vk::InstanceCreateInfo info{};
   info.setPApplicationInfo(&appInfo);
   info.setPApplicationInfo(&appInfo);
-  info.setEnabledExtensionCount(
-      static_cast<uint32_t>(requiredExtensions.size()));
-  info.setPpEnabledExtensionNames(requiredExtensions.data());
+  auto extensions = requiredExtensions;
+  if (enableValidationLayers) {
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  }
+  info.setPEnabledExtensionNames(extensions);
   auto _instance = vk::createInstanceUnique(info, ALLOCATOR);
   return _instance;
 }
 
-vk::PhysicalDevice Vulking::Engine::getSuitablePhysicalDevice() {
+vk::PhysicalDevice Engine::getSuitablePhysicalDevice() {
   auto physicalDevices = instance->enumeratePhysicalDevices();
   for (const auto &physicalDevice : physicalDevices) {
     if (isDeviceSuitable(physicalDevice)) {
@@ -59,8 +84,7 @@ vk::PhysicalDevice Vulking::Engine::getSuitablePhysicalDevice() {
   throw std::runtime_error("failed to find a suitable GPU.");
 }
 
-bool Vulking::Engine::isDeviceSuitable(
-    vk::PhysicalDevice physicalDevice) const {
+bool Engine::isDeviceSuitable(vk::PhysicalDevice physicalDevice) const {
   assert(physicalDevice != VK_NULL_HANDLE);
   // This should be extended based on required features, extensions, and queue
   // families.
@@ -77,7 +101,7 @@ bool Vulking::Engine::isDeviceSuitable(
          props.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 }
 
-vk::UniqueDevice Vulking::Engine::createDevice() {
+vk::UniqueDevice Engine::createDevice() {
   vk::ArrayProxy<float> queuePriorities = 1.0f;
 
   std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
@@ -103,3 +127,4 @@ vk::UniqueDevice Vulking::Engine::createDevice() {
 
   return physicalDevice.createDeviceUnique(createInfo, ALLOCATOR);
 }
+} // namespace Vulking

@@ -15,14 +15,14 @@ TEST_CASE("Engine engines", "[e2e]") {
   REQUIRE(window != nullptr);
   CHK_GLFW(glfwIconifyWindow(window), "failed to iconify window");
 
-  const auto extensions = getGlfwRequiredInstanceExtensions();
+  auto extensions = getGlfwRequiredInstanceExtensions();
   Vulking::Engine engine(window, "TestApplication", VK_MAKE_VERSION(0, 0, 1),
                          extensions);
 
   int src = 5;
-  auto buffer = engine.createBuffer(
-      &src, static_cast<VkDeviceSize>(sizeof(src)),
-      Vulking::Buffer::Usage::STAGING, Vulking::Buffer::Memory::STAGING);
+  auto buffer = Vulking::Buffer(&src, static_cast<VkDeviceSize>(sizeof(src)),
+                                Vulking::Buffer::Usage::STAGING,
+                                Vulking::Buffer::Memory::STAGING);
   buffer.map();
   int newData = 10;
   buffer.set(&newData, sizeof(newData));
