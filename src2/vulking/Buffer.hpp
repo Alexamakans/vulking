@@ -26,7 +26,7 @@ public:
   MOVE_ONLY(Buffer);
 
   Buffer() {}
-  Buffer(void *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
+  Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
   Buffer(const std::vector<T> &src, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
@@ -37,10 +37,11 @@ public:
   vk::Buffer get() const { return buffer; }
   vk::DeviceSize getSize() const { return size; }
 
-  bool isMapped() const;
+  bool isMapped() const { return pData != nullptr; }
   void map();
   void mapTo(void **mapped);
-  void set(void *src, size_t size) const;
+  void set(const T *src, size_t size) const;
+  void set(const std::vector<T> &src) const;
   void unmap();
 
   void copyTo(const Buffer &dst);
@@ -71,12 +72,14 @@ inline Buffer<T>::Buffer(const std::vector<T> &src, vk::BufferUsageFlags usage,
 }
 
 template <typename T>
-Buffer<T>::Buffer(void *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
+Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
                   vk::MemoryPropertyFlags properties, const char *name)
     : size(size) {
   assert(size != 0);
-  init(size, usage, properties, name);
+  init(usage, properties, name);
+  map();
   set(src, size);
+  unmap();
 }
 
 template <typename T> Buffer<T>::~Buffer() {
@@ -94,12 +97,17 @@ template <typename T> void Buffer<T>::mapTo(void **mapped) {
   pData = *mapped;
 }
 
-template <typename T> void Buffer<T>::set(void *src, size_t size) const {
+template <typename T> void Buffer<T>::set(const T *src, size_t size) const {
   if (static_cast<VkDeviceSize>(size) > this->size) {
     throw std::runtime_error(
         std::format("size ({}) too large, must be <= {}", size, this->size));
   }
+  assert(isMapped());
   memcpy(pData, src, size);
+}
+
+template <typename T> void Buffer<T>::set(const std::vector<T> &src) const {
+  set(src.data(), sizeof(T) * src.size());
 }
 
 template <typename T> void Buffer<T>::unmap() {

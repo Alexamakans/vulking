@@ -1,3 +1,4 @@
+#include "../Buffer.hpp"
 #include "../Engine.hpp"
 #include "../Util.hpp"
 
@@ -20,9 +21,9 @@ TEST_CASE("Engine engines", "[e2e]") {
                          extensions);
 
   int src = 5;
-  auto buffer = Vulking::Buffer(&src, static_cast<VkDeviceSize>(sizeof(src)),
-                                Vulking::Buffer::Usage::STAGING,
-                                Vulking::Buffer::Memory::STAGING);
+  auto buffer = Vulking::Buffer<int>(
+      &src, static_cast<vk::DeviceSize>(sizeof(src)),
+      Vulking::BufferUsage::STAGING, Vulking::BufferMemory::STAGING);
   buffer.map();
   int newData = 10;
   buffer.set(&newData, sizeof(newData));
