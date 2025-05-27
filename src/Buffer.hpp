@@ -12,6 +12,8 @@ struct BufferUsage {
       vk::BufferUsageFlagBits::eTransferSrc;
   static constexpr vk::BufferUsageFlags FINAL =
       vk::BufferUsageFlagBits::eTransferDst;
+  static constexpr vk::BufferUsageFlags UNIFORM =
+      vk::BufferUsageFlagBits::eUniformBuffer;
 };
 
 struct BufferMemory {
@@ -20,11 +22,12 @@ struct BufferMemory {
       vk::MemoryPropertyFlagBits::eHostCoherent;
   static constexpr vk::MemoryPropertyFlags FINAL =
       vk::MemoryPropertyFlagBits::eDeviceLocal;
+  static constexpr vk::MemoryPropertyFlags UNIFORM =
+      vk::MemoryPropertyFlagBits::eHostVisible |
+      vk::MemoryPropertyFlagBits::eHostCoherent;
 };
 template <typename T> class Buffer {
 public:
-  MOVE_ONLY(Buffer);
-
   Buffer() {}
   Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
@@ -32,9 +35,9 @@ public:
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
   Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
-  ~Buffer();
 
-  vk::Buffer get() const { return buffer; }
+  vk::Buffer getBuffer() const { return buffer.get(); }
+  vk::DeviceMemory getMemory() const { return memory.get(); }
   vk::DeviceSize getSize() const { return size; }
 
   bool isMapped() const { return pData != nullptr; }
@@ -51,8 +54,8 @@ private:
             const char *name = "unnamed");
 
   vk::DeviceSize size;
-  vk::Buffer buffer;
-  vk::DeviceMemory memory;
+  vk::UniqueBuffer buffer;
+  vk::UniqueDeviceMemory memory;
   void *pData = nullptr;
 };
 
@@ -82,18 +85,10 @@ Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
   unmap();
 }
 
-template <typename T> Buffer<T>::~Buffer() {
-  assert(buffer);
-  Engine::device->destroyBuffer(buffer, ALLOCATOR);
-
-  assert(memory);
-  Engine::device->freeMemory(memory, ALLOCATOR);
-}
-
 template <typename T> void Buffer<T>::map() { mapTo(&pData); }
 
 template <typename T> void Buffer<T>::mapTo(void **mapped) {
-  *mapped = Engine::device->mapMemory(memory, 0, size);
+  *mapped = Engine::device->mapMemory(memory.get(), 0, size);
   pData = *mapped;
 }
 
@@ -111,15 +106,17 @@ template <typename T> void Buffer<T>::set(const std::vector<T> &src) const {
 }
 
 template <typename T> void Buffer<T>::unmap() {
-  Engine::device->unmapMemory(memory);
+  Engine::device->unmapMemory(memory.get());
   pData = nullptr;
 }
 
 template <typename T> void Buffer<T>::copyTo(const Buffer &dst) {
+  assert(buffer);
+  assert(dst.buffer);
   auto cmd = Engine::beginCommand();
   vk::BufferCopy copy{};
   copy.size = size;
-  cmd.copyBuffer(buffer, dst.buffer, 1, &copy);
+  cmd.copyBuffer(buffer.get(), dst.buffer.get(), 1, &copy);
   cmd.end();
 }
 
@@ -130,18 +127,19 @@ void Buffer<T>::init(vk::BufferUsageFlags usage,
   info.setSize(size);
   info.setUsage(usage);
   info.setSharingMode(vk::SharingMode::eExclusive);
-  buffer = Engine::device->createBuffer(info, ALLOCATOR);
+  buffer = Engine::device->createBufferUnique(info);
 
-  auto memoryRequirements = Engine::device->getBufferMemoryRequirements(buffer);
+  auto memoryRequirements =
+      Engine::device->getBufferMemoryRequirements(buffer.get());
 
   vk::MemoryAllocateInfo allocInfo{};
   allocInfo.setAllocationSize(memoryRequirements.size);
   allocInfo.setMemoryTypeIndex(findMemoryType(
       Engine::physicalDevice, memoryRequirements.memoryTypeBits, properties));
 
-  memory = Engine::device->allocateMemory(allocInfo, ALLOCATOR);
+  memory = Engine::device->allocateMemoryUnique(allocInfo, ALLOCATOR);
 
-  NAME_OBJECT(Engine::device, buffer, std::format("{}_buffer", name));
-  NAME_OBJECT(Engine::device, memory, std::format("{}_memory", name));
+  NAME_OBJECT(Engine::device, buffer.get(), std::format("{}_buffer", name));
+  NAME_OBJECT(Engine::device, memory.get(), std::format("{}_memory", name));
 }
 } // namespace Vulking

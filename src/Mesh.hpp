@@ -63,11 +63,16 @@ public:
   void releaseCPUResources();
   void bind(vk::CommandBuffer cmd);
 
+  uint32_t getNumVertices() const { return numVertices; }
+  uint32_t getNumIndices() const { return numIndices; }
+
 private:
   void init(const char *name = "unnamed");
 
   std::vector<Vertex> cpuVertices;
+  uint32_t numVertices;
   std::vector<Index> cpuIndices;
+  uint32_t numIndices;
 
   Buffer<Vertex> vertices;
   Buffer<Index> indices;

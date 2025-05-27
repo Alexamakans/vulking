@@ -9,8 +9,10 @@ GLFWwindow *createWindow() {
 }
 
 vk::UniqueRenderPass createRenderPass() {
-  auto info = Vulking::RenderPassCreateInfo();
-  return Vulking::Engine::device->createRenderPassUnique(info);
+  auto info = Vulking::RenderPassInfo{}.Create(
+      Vulking::Engine::swapchainImageFormat, Vulking::Engine::msaaSamples);
+  auto createInfo = info.toCreateInfo();
+  return Vulking::Engine::device->createRenderPassUnique(createInfo);
 }
 
 vk::UniqueDescriptorSetLayout createDescriptorSetLayout() {

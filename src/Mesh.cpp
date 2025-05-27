@@ -23,17 +23,21 @@ Mesh::Mesh(const std::vector<Vertex> &vertices,
 
 void Mesh::releaseCPUResources() {
   cpuVertices.clear();
+  cpuVertices.shrink_to_fit();
   cpuIndices.clear();
+  cpuIndices.shrink_to_fit();
 }
 
 void Mesh::bind(vk::CommandBuffer cmd) {
-  vk::Buffer vertexBuffers[] = {vertices.get()};
+  vk::Buffer vertexBuffers[] = {vertices.getBuffer()};
   vk::DeviceSize offsets[] = {0};
   cmd.bindVertexBuffers(0, 1, vertexBuffers, offsets);
-  cmd.bindIndexBuffer(indices.get(), 0, IndexType);
+  cmd.bindIndexBuffer(indices.getBuffer(), 0, IndexType);
 }
 
 void Mesh::init(const char *name) {
+  numVertices = static_cast<uint32_t>(cpuVertices.size());
+  numIndices = static_cast<uint32_t>(cpuIndices.size());
   auto verticesStaging =
       Buffer<Vertex>(cpuVertices, BufferUsage::STAGING, BufferMemory::STAGING,
                      std::format("{}_vertex_staging", name).c_str());

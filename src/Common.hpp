@@ -18,6 +18,9 @@
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -132,11 +135,11 @@ inline void nameObject(vk::UniqueDevice &device, T handle,
 
 inline static const vk::AllocationCallbacks *ALLOCATOR = VULKING_ALLOCATOR;
 
-static std::vector<char> readFile(const std::string &filename) {
-  std::ifstream file(filename, std::ios::ate | std::ios::binary);
+static std::vector<char> readFile(const std::string &path) {
+  std::ifstream file(path, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    throw std::runtime_error(std::format("failed to open file '{}'", filename));
+    throw std::runtime_error(std::format("failed to open file '{}'", path));
   }
 
   size_t fileSize = (size_t)file.tellg();
@@ -150,11 +153,30 @@ static std::vector<char> readFile(const std::string &filename) {
   return buffer;
 }
 
-#define MOVE_ONLY(T)                                                           \
+/* tuple(data, width, height) */
+static std::tuple<std::vector<char>, uint32_t, uint32_t>
+loadRgba8888Texture(const char *path) {
+  int w, h, comp;
+  stbi_uc *pResult = stbi_load(path, &w, &h, &comp, STBI_rgb_alpha);
+  if (!pResult || comp != STBI_rgb_alpha) {
+    if (pResult) {
+      stbi_image_free(pResult);
+    }
+    throw std::runtime_error(
+        std::format("failed to decompress texture: {}", path));
+  }
+
+  std::vector<char> data{};
+  data.insert(end(data), pResult, pResult + w * h * 4);
+  stbi_image_free(pResult);
+  return {data, w, h};
+}
+
+#define MOVE_ONLY_EXPAND_ME(T)                                                 \
   T(const T &) = delete;                                                       \
   T &operator=(const T &) = delete;                                            \
-  T(T &&other) noexcept = default;                                             \
-  T &operator=(T &&other) noexcept = default;
+  T(T &&other) noexcept {};                                                    \
+  T &operator=(T &&other) noexcept {};
 
 inline static uint32_t findMemoryType(vk::PhysicalDevice physicalDevice,
                                       uint32_t typeFilter,

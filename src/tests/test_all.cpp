@@ -2,8 +2,11 @@
 #include "../Engine.hpp"
 #include "../Util.hpp"
 
+#include <GLFW/glfw3.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+
+void dothing(GLFWwindow *window);
 
 TEST_CASE("Engine engines", "[e2e]") {
   // Create window
@@ -16,6 +19,12 @@ TEST_CASE("Engine engines", "[e2e]") {
   REQUIRE(window != nullptr);
   CHK_GLFW(glfwIconifyWindow(window), "failed to iconify window");
 
+  dothing(window);
+
+  glfwTerminate();
+}
+
+void dothing(GLFWwindow *window) {
   auto extensions = getGlfwRequiredInstanceExtensions();
   Vulking::Engine engine(window, "TestApplication", VK_MAKE_VERSION(0, 0, 1),
                          extensions);

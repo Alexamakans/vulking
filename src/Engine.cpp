@@ -21,12 +21,13 @@ vk::UniqueInstance Engine::instance;
 vk::PhysicalDevice Engine::physicalDevice;
 vk::UniqueDevice Engine::device;
 
-vk::CommandPool Engine::commandPool;
-vk::DescriptorPool Engine::descriptorPool;
+vk::UniqueCommandPool Engine::commandPool;
 
 vk::UniqueSwapchainKHR Engine::swapchain;
 vk::Format Engine::swapchainImageFormat;
 vk::Extent2D Engine::swapchainExtent;
+
+uint32_t Engine::imageIndex = 0;
 
 Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                uint32_t applicationVersion,
@@ -41,10 +42,11 @@ Engine::Engine(GLFWwindow *window, const char *applicationInfo,
   if (result != VK_SUCCESS) {
     throw std::runtime_error("failed to create window surface");
   }
-  surface = ScopedSurface(instance.get(), _surface);
+  surface = std::move(UniqueSurface(instance.get(), vk::SurfaceKHR(_surface)));
 
   Engine::physicalDevice = getSuitablePhysicalDevice();
   Engine::device = createDevice();
+  Engine::commandPool = createCommandPool();
   DYNAMIC_DISPATCHER = vk::detail::DispatchLoaderDynamic(
       instance.get(), vkGetInstanceProcAddr, device.get(), vkGetDeviceProcAddr);
 
@@ -82,7 +84,7 @@ Engine::Engine(GLFWwindow *window, const char *applicationInfo,
 
 vk::CommandBuffer Engine::beginCommand() {
   vk::CommandBufferAllocateInfo info;
-  info.setCommandPool(commandPool);
+  info.setCommandPool(commandPool.get());
   info.setLevel(vk::CommandBufferLevel::ePrimary);
   info.setCommandBufferCount(1);
   auto commandBuffer = device->allocateCommandBuffers(info).front();
@@ -322,5 +324,12 @@ vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
 
     return actualExtent;
   }
+}
+
+vk::UniqueCommandPool Engine::createCommandPool() {
+  auto info = vk::CommandPoolCreateInfo{}
+                  .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+                  .setQueueFamilyIndex(graphicsQueueFamily);
+  return device->createCommandPoolUnique(info);
 }
 } // namespace Vulking

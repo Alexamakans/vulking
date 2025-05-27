@@ -7,6 +7,7 @@ Vulking::Image::Image(vk::ImageCreateInfo info,
                       const char *name) {
   init(info, memoryProperties, name);
 };
+
 Vulking::Image::Image(uint32_t width, uint32_t height, uint32_t mipLevels,
                       vk::SampleCountFlagBits samples, vk::Format format,
                       vk::ImageTiling tiling, vk::ImageUsageFlags usage,
@@ -26,6 +27,13 @@ Vulking::Image::Image(uint32_t width, uint32_t height, uint32_t mipLevels,
 
   init(info, memoryProperties, name);
 };
+
+Vulking::Image::Image(const std::string &path, vk::SampleCountFlagBits samples,
+                      vk::Format format, const char *name) {
+
+MAYBE CONTINUE HERE?
+}
+
 void Vulking::Image::init(vk::ImageCreateInfo info,
                           vk::MemoryPropertyFlags memoryProperties,
                           const char *name) {

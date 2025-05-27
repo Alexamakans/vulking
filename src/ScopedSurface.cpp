@@ -1,15 +1,11 @@
 #include "ScopedSurface.hpp"
 
-Vulking::ScopedSurface::ScopedSurface() {}
+Vulking::UniqueSurface::UniqueSurface() : instance(nullptr), surface(nullptr) {}
 
-Vulking::ScopedSurface::ScopedSurface(vk::Instance instance,
+Vulking::UniqueSurface::UniqueSurface(vk::Instance instance,
                                       vk::SurfaceKHR surface)
-    : m_instance(instance), m_surface(surface) {}
+    : instance(instance), surface(surface) {}
 
-Vulking::ScopedSurface::~ScopedSurface() {
-  if (m_surface) {
-    m_instance.destroySurfaceKHR(m_surface);
-  }
-}
+Vulking::UniqueSurface::~UniqueSurface() { reset(); }
 
-vk::SurfaceKHR Vulking::ScopedSurface::get() const { return m_surface; }
+vk::SurfaceKHR Vulking::UniqueSurface::get() const { return surface; }
