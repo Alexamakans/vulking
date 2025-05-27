@@ -29,4 +29,4 @@ fi
 ln -s ./build/compile_commands.json ./compile_commands.json
 
 ./build/tests --durations yes --allow-running-no-tests "~[never_run]"
-./build/vulking
+./build/vulking_user
