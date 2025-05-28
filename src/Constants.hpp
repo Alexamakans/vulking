@@ -12,4 +12,4 @@ inline const std::vector<const char *> VALIDATION_LAYERS = {
 #endif
 
 inline const std::vector<const char *> DEVICE_EXTENSIONS = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME};
