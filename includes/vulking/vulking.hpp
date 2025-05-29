@@ -8,4 +8,4 @@
 #include "Mesh.hpp"
 #include "Util.hpp"
 #include "Functions.hpp"
-#include "ScopedSurface.hpp"
+#include "UniqueSurface.hpp"

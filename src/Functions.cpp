@@ -1,8 +1,11 @@
 #include "Functions.hpp"
 
-#include "Common.hpp"
 #include "Engine.hpp"
-#include <vulkan/vulkan_handles.hpp>
+#include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_structs.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 namespace Vulking {
 vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates,
@@ -34,7 +37,7 @@ vk::Format findDepthFormat() {
 vk::AttachmentDescription
 ColorAttachmentDescription(vk::Format format,
                            vk::SampleCountFlagBits msaaSamples) {
-  return vk::AttachmentDescription{}
+  return vk::AttachmentDescription()
       .setFormat(format)
       .setSamples(msaaSamples)
       .setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -47,7 +50,7 @@ ColorAttachmentDescription(vk::Format format,
 
 vk::AttachmentDescription
 DepthAttachmentDescription(vk::SampleCountFlagBits msaaSamples) {
-  return vk::AttachmentDescription{}
+  return vk::AttachmentDescription()
       .setFormat(findDepthFormat())
       .setSamples(msaaSamples)
       .setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -59,7 +62,7 @@ DepthAttachmentDescription(vk::SampleCountFlagBits msaaSamples) {
 }
 
 vk::AttachmentDescription ColorResolveAttachmentDescription(vk::Format format) {
-  return vk::AttachmentDescription{}
+  return vk::AttachmentDescription()
       .setFormat(format)
       .setSamples(vk::SampleCountFlagBits::e1)
       .setLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -70,49 +73,37 @@ vk::AttachmentDescription ColorResolveAttachmentDescription(vk::Format format) {
       .setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
 }
 
-struct RenderPassCreateInfoComponents {
-  std::array<vk::AttachmentDescription, 3> attachments;
-  std::array<vk::SubpassDescription, 1> subpasses;
-  std::array<vk::SubpassDependency, 1> dependencies;
-
-  vk::RenderPassCreateInfo toCreateInfo() const {
-    return vk::RenderPassCreateInfo{}
-        .setAttachments(attachments)
-        .setSubpasses(subpasses)
-        .setDependencies(dependencies);
-  }
-};
-
 vk::UniqueDescriptorPool createDescriptorPool(
     uint32_t size,
     const std::vector<std::tuple<vk::DescriptorType, uint32_t>> &poolSizes) {
   auto _poolSizes = std::vector<vk::DescriptorPoolSize>(poolSizes.size());
   for (size_t i = 0; i < poolSizes.size(); i++) {
-    auto [type, size] = poolSizes[i];
-    _poolSizes.push_back(
-        vk::DescriptorPoolSize{}.setType(type).setDescriptorCount(size));
+    const auto [type, size] = poolSizes[i];
+    _poolSizes[i] =
+        vk::DescriptorPoolSize().setType(type).setDescriptorCount(size);
   }
-  auto info = vk::DescriptorPoolCreateInfo{}
-                  .setPoolSizeCount(1)
-                  .setPoolSizes(_poolSizes)
-                  .setMaxSets(size);
+  auto info =
+      vk::DescriptorPoolCreateInfo()
+          .setPoolSizes(_poolSizes)
+          .setMaxSets(size)
+          .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
   return Engine::device->createDescriptorPoolUnique(info);
 }
 
 std::vector<vk::UniqueDescriptorSet>
 allocateDescriptorSet(const vk::UniqueDescriptorPool &pool,
                       const std::vector<vk::DescriptorSetLayout> &layouts) {
-  auto info = vk::DescriptorSetAllocateInfo{}
-                  .setDescriptorPool(pool.get())
-                  .setSetLayouts(layouts);
-  return Engine::device->allocateDescriptorSetsUnique(info);
+  return Engine::device->allocateDescriptorSetsUnique(
+      vk::DescriptorSetAllocateInfo()
+          .setDescriptorPool(pool.get())
+          .setSetLayouts(layouts));
 }
 
 vk::UniqueSampler createSampler() {
   const auto properties = Vulking::Engine::physicalDevice.getProperties();
   const auto maxSamplerAnisotropy = properties.limits.maxSamplerAnisotropy;
 
-  const auto info = vk::SamplerCreateInfo{}
+  const auto info = vk::SamplerCreateInfo()
                         .setMagFilter(vk::Filter::eLinear)
                         .setMinFilter(vk::Filter::eLinear)
                         .setAddressModeU(vk::SamplerAddressMode::eRepeat)
@@ -131,10 +122,30 @@ vk::UniqueSampler createSampler() {
   return Vulking::Engine::device->createSamplerUnique(info);
 }
 
+void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width,
+                       uint32_t height) {
+  auto cmd = Engine::beginCommand();
+  {
+    const auto region =
+        vk::BufferImageCopy()
+            .setImageSubresource(
+                vk::ImageSubresourceLayers()
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setLayerCount(1))
+            .setImageExtent({width, height, 1});
+
+    cmd.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal,
+                          region);
+  }
+  cmd.end();
+  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+}
+
 void transitionImageLayout(vk::Image image, vk::Format format,
                            uint32_t mipLevels, vk::ImageLayout from,
                            vk::ImageLayout to) {
-  const auto cmd = Engine::beginCommand();
+  auto cmd = Engine::beginCommand();
+  assert(cmd);
   {
     auto barrier = vk::ImageMemoryBarrier2KHR()
                        .setOldLayout(from)
@@ -166,29 +177,17 @@ void transitionImageLayout(vk::Image image, vk::Format format,
 
     auto dependencyInfo =
         vk::DependencyInfoKHR().setImageMemoryBarriers({barrier});
-    cmd.pipelineBarrier2(dependencyInfo);
+    cmd.pipelineBarrier2(dependencyInfo, DYNAMIC_DISPATCHER);
   }
   cmd.end();
+  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
-void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width,
-                       uint32_t height) {
-  const auto cmd = Engine::beginCommand();
-  {
-    const auto region =
-        vk::BufferImageCopy()
-            .setImageSubresource(
-                vk::ImageSubresourceLayers()
-                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                    .setLayerCount(0))
-            .setImageExtent({width, height, 1});
-
-    cmd.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal,
-                          region);
-  }
-  cmd.end();
-}
-
+// https://vulkan-tutorial.com/Generating_Mipmaps#page_Linear-filtering-support
+//
+// "It should be noted that it is uncommon in practice to generate the mipmap
+// levels at runtime. Usually they are pregenerated and stored in the texture
+// file alongside the base level to improve loading speed."
 void generateMipmaps(const vk::Image image, const vk::Format format,
                      const int32_t width, const int32_t height,
                      const uint32_t mipLevels) {
@@ -200,7 +199,7 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
     throw std::runtime_error("image format does not support linear blitting");
   }
 
-  const auto cmd = Engine::beginCommand();
+  auto cmd = Engine::beginCommand();
   {
     auto barrier = vk::ImageMemoryBarrier2KHR()
                        .setImage(image)
@@ -215,7 +214,10 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
     int32_t mipWidth = width;
     int32_t mipHeight = height;
 
-    vk::DependencyInfoKHR dependencyInfo{};
+    assert(DYNAMIC_DISPATCHER.vkCmdPipelineBarrier2KHR != nullptr &&
+           "vkCmdPipelineBarrier2KHR is not loaded!");
+
+    vk::DependencyInfoKHR dependencyInfo;
 
     for (uint32_t i = 1; i < mipLevels; i++) {
       barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
@@ -225,14 +227,16 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
           .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
           .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
           .subresourceRange.setBaseMipLevel(i - 1);
+      std::cout << "base mip level = " << i - 1 << std::endl;
 
-      cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}));
+      cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}),
+                              DYNAMIC_DISPATCHER);
 
-      auto blitRegion =
+      const auto blitRegion =
           vk::ImageBlit2KHR()
               .setSrcOffsets({
-                  vk::Offset3D{0, 0, 0},
-                  vk::Offset3D{mipWidth, mipHeight, 1},
+                  vk::Offset3D(0, 0, 0),
+                  vk::Offset3D(mipWidth, mipHeight, 1),
               })
               .setSrcSubresource(
                   vk::ImageSubresourceLayers()
@@ -240,15 +244,15 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
                       .setMipLevel(i - 1)
                       .setLayerCount(1))
               .setDstOffsets(
-                  {vk::Offset3D{0, 0, 0},
-                   vk::Offset3D{mipWidth > 1 ? mipWidth / 2 : 1,
-                                mipHeight > 1 ? mipHeight / 2 : 1, 1}})
+                  {vk::Offset3D(0, 0, 0),
+                   vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1,
+                                mipHeight > 1 ? mipHeight / 2 : 1, 1)})
               .setDstSubresource(
                   vk::ImageSubresourceLayers()
                       .setAspectMask(vk::ImageAspectFlagBits::eColor)
                       .setMipLevel(i)
                       .setLayerCount(1));
-      auto blitInfo =
+      const auto blitInfo =
           vk::BlitImageInfo2KHR()
               .setSrcImage(image)
               .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
@@ -257,7 +261,7 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
               .setFilter(vk::Filter::eLinear)
               .setRegions({blitRegion});
 
-      cmd.blitImage2KHR(blitInfo);
+      cmd.blitImage2KHR(blitInfo, DYNAMIC_DISPATCHER);
 
       barrier.setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
           .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
@@ -266,7 +270,8 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
           .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
           .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader);
 
-      cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}));
+      cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}),
+                              DYNAMIC_DISPATCHER);
 
       if (mipWidth > 1) {
         mipWidth /= 2;
@@ -284,10 +289,29 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
         .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
         .subresourceRange.setBaseMipLevel(mipLevels - 1);
 
-    cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}));
+    cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}),
+                            DYNAMIC_DISPATCHER);
   }
   cmd.end();
+  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+}
 
-  I JUST FINISHED THIS FUNCTION
+/* tuple(data, width, height) */
+std::tuple<std::vector<char>, uint32_t, uint32_t>
+loadRgba8888Texture(const char *path) {
+  int w, h, comp;
+  stbi_uc *pResult = stbi_load(path, &w, &h, &comp, STBI_rgb_alpha);
+  if (!pResult) {
+    throw std::runtime_error(std::format(
+        "failed to load texture, reason='{}' path='{}'",
+        stbi_failure_reason() != nullptr ? stbi_failure_reason() : "none",
+        path));
+  }
+
+  std::vector<char> data{};
+  data.insert(end(data), pResult, pResult + w * h * 4);
+
+  stbi_image_free(pResult);
+  return {data, w, h};
 }
 } // namespace Vulking

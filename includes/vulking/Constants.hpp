@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.hpp"
-#include <vector>
+#include <vulkan/vulkan_core.h>
 
 #ifdef NDEBUG
 inline const bool ENABLE_VALIDATION_LAYERS = true;
@@ -12,4 +12,5 @@ inline const std::vector<const char *> VALIDATION_LAYERS = {
 #endif
 
 inline const std::vector<const char *> DEVICE_EXTENSIONS = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+    VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME};

@@ -9,25 +9,26 @@ GLFWwindow *createWindow() {
 }
 
 vk::UniqueRenderPass createRenderPass() {
-  auto info = Vulking::RenderPassInfo{}.Create(
+  const auto info = Vulking::RenderPassInfo().Create(
       Vulking::Engine::swapchainImageFormat, Vulking::Engine::msaaSamples);
-  auto createInfo = info.toCreateInfo();
-  return Vulking::Engine::device->createRenderPassUnique(createInfo);
+  return Vulking::Engine::device->createRenderPassUnique(info.toCreateInfo());
 }
 
 vk::UniqueDescriptorSetLayout createDescriptorSetLayout() {
   vk::DescriptorSetLayoutBinding base{};
-  base.setDescriptorCount(1)
-      .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-      .setPImmutableSamplers(nullptr);
+  base.setDescriptorCount(1).setPImmutableSamplers(nullptr);
 
   auto ubo = base;
-  ubo.setBinding(0).setStageFlags(vk::ShaderStageFlagBits::eVertex);
+  ubo.setBinding(0)
+      .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+      .setStageFlags(vk::ShaderStageFlagBits::eVertex);
 
   auto sampler = base;
-  sampler.setBinding(1).setStageFlags(vk::ShaderStageFlagBits::eFragment);
+  sampler.setBinding(1)
+      .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+      .setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
-  std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {ubo, sampler};
+  std::array<vk::DescriptorSetLayoutBinding, 2> bindings{ubo, sampler};
   vk::DescriptorSetLayoutCreateInfo info{};
   info.setBindings(bindings);
 

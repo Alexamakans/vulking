@@ -90,13 +90,19 @@ allocateDescriptorSet(const vk::UniqueDescriptorPool &pool,
 
 vk::UniqueSampler createSampler();
 
-void transitionImageLayout(vk::Image image, vk::Format format,
-                           vk::ImageLayout from, vk::ImageLayout to);
+void copyBuffer(const vk::Buffer &src, const vk::Buffer &dst,
+                const vk::DeviceSize size);
 
 void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width,
                        uint32_t height);
 
+void transitionImageLayout(vk::Image image, vk::Format format,
+                           uint32_t mipLevels, vk::ImageLayout from,
+                           vk::ImageLayout to);
+
 void generateMipmaps(vk::Image image, vk::Format format, int32_t width,
                      int32_t height, uint32_t mipLevels);
 
+std::tuple<std::vector<char>, uint32_t, uint32_t>
+loadRgba8888Texture(const char *path);
 } // namespace Vulking

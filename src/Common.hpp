@@ -18,9 +18,6 @@
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -98,29 +95,33 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 
 // Initialized by Engine in constructor
-inline vk::detail::DispatchLoaderDynamic DYNAMIC_DISPATCHER;
+extern vk::detail::DispatchLoaderDynamic DYNAMIC_DISPATCHER;
 
-#define NAME_OBJECT(device, handle, name) nameObject(device, handle, name)
+#define NAME_OBJECT(uniqueDevice, handle, name)                                \
+  nameObject(uniqueDevice.get(), handle, name)
 
-inline void _nameObject(vk::UniqueDevice &device, vk::ObjectType objectType,
+inline void _nameObject(vk::Device device, vk::ObjectType objectType,
                         uint64_t handle, const char *name) {
   vk::DebugUtilsObjectNameInfoEXT info;
   info.setObjectType(objectType);
   info.setObjectHandle(handle);
   info.setPObjectName(name);
-
-  CHK(device->setDebugUtilsObjectNameEXT(&info, DYNAMIC_DISPATCHER),
-      "failed to name object");
+  auto fn = DYNAMIC_DISPATCHER.vkSetDebugUtilsObjectNameEXT;
+  if (!fn) {
+    throw std::runtime_error(
+        "setDebugUtilsObjectNameEXT function pointer is NULL!\n");
+    // You should NOT call the function if this is null
+  }
+  device.setDebugUtilsObjectNameEXT(info, DYNAMIC_DISPATCHER);
 }
 
 template <typename T>
-inline void nameObject(vk::UniqueDevice &device, T handle, const char *name) {
+inline void nameObject(vk::Device device, T handle, const char *name) {
   _nameObject(device, handle.objectType, getVulkanHandle(handle), name);
 }
 
 template <typename T>
-inline void nameObject(vk::UniqueDevice &device, T handle,
-                       const std::string &name) {
+inline void nameObject(vk::Device device, T handle, const std::string &name) {
   _nameObject(device, handle.objectType, getVulkanHandle(handle), name.c_str());
 }
 #endif // ifdef NDEBUG
@@ -151,25 +152,6 @@ static std::vector<char> readFile(const std::string &path) {
   file.close();
 
   return buffer;
-}
-
-/* tuple(data, width, height) */
-static std::tuple<std::vector<char>, uint32_t, uint32_t>
-loadRgba8888Texture(const char *path) {
-  int w, h, comp;
-  stbi_uc *pResult = stbi_load(path, &w, &h, &comp, STBI_rgb_alpha);
-  if (!pResult || comp != STBI_rgb_alpha) {
-    if (pResult) {
-      stbi_image_free(pResult);
-    }
-    throw std::runtime_error(
-        std::format("failed to decompress texture: {}", path));
-  }
-
-  std::vector<char> data{};
-  data.insert(end(data), pResult, pResult + w * h * 4);
-  stbi_image_free(pResult);
-  return {data, w, h};
 }
 
 #define MOVE_ONLY_EXPAND_ME(T)                                                 \

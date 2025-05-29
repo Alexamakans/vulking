@@ -1,8 +1,5 @@
-#include "../Buffer.hpp"
-#include "../Engine.hpp"
-#include "../Util.hpp"
+#include <vulking/vulking.hpp>
 
-#include <GLFW/glfw3.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 

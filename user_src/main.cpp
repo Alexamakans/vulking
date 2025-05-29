@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <ranges>
+#include <vulkan/vulkan_enums.hpp>
 #include <vulking/vulking.hpp>
 
 struct UBO {
@@ -14,7 +15,7 @@ struct UBO {
   alignas(16) glm::mat4 proj;
 };
 
-void updateUBO(Vulking::Buffer<UBO> &buffer, uint32_t index);
+void updateUBO(const Vulking::Buffer<UBO> &buffer);
 void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
                           std::vector<Vulking::Buffer<UBO>> &uboBuffers,
                           vk::ImageView textureImageView, vk::Sampler sampler);
@@ -27,9 +28,9 @@ int main() {
 
   std::map<vk::ShaderStageFlagBits, Shader> shaders = {
       {vk::ShaderStageFlagBits::eVertex,
-       loadShader("assets/shaders/test.vert", "main", "vertex_shader")},
+       loadShader("assets/shaders/test.vert.spv", "main", "vertex_shader")},
       {vk::ShaderStageFlagBits::eFragment,
-       loadShader("assets/shaders/test.frag", "main", "fragment_shader")},
+       loadShader("assets/shaders/test.frag.spv", "main", "fragment_shader")},
   };
 
   auto renderPass = createRenderPass();
@@ -41,9 +42,6 @@ int main() {
 
   engine.createFramebuffers(renderPass);
 
-  auto mesh = Vulking::Mesh("assets/models/viking_room.obj", "viking_room");
-  mesh.releaseCPUResources();
-
   const auto swapchainImageCount = engine.getSwapchainImageCount();
 
   auto descriptorPool = Vulking::createDescriptorPool(
@@ -51,10 +49,12 @@ int main() {
       {{vk::DescriptorType::eUniformBuffer, swapchainImageCount},
        {vk::DescriptorType::eCombinedImageSampler, swapchainImageCount}});
 
-  auto uboBuffers = std::vector<Vulking::Buffer<UBO>>(swapchainImageCount);
+  std::vector<Vulking::Buffer<UBO>> uboBuffers;
   for (uint32_t i = 0; i < swapchainImageCount; i++) {
-    uboBuffers.emplace_back(1, Vulking::BufferUsage::UNIFORM,
-                            Vulking::BufferMemory::UNIFORM);
+    uboBuffers.emplace_back(UBO{}, Vulking::BufferUsage::UNIFORM,
+                            Vulking::BufferMemory::UNIFORM,
+                            std::format("ubo_buffer_{}", i).c_str());
+    uboBuffers[i].map();
   }
 
   const std::vector<vk::DescriptorSetLayout> layouts(swapchainImageCount,
@@ -62,19 +62,35 @@ int main() {
   auto descriptorSets = Vulking::allocateDescriptorSet(descriptorPool, layouts);
 
   // this shouldn't be here start
-  auto textureImage = Vulking::Image();
+  auto mesh = Vulking::Mesh("assets/models/viking_room.obj", "viking_room");
+  mesh.releaseCPUResources();
+
+  auto textureImage = Vulking::Image(
+      "assets/textures/viking_room.png", Vulking::Engine::msaaSamples,
+      vk::Format::eR8G8B8A8Srgb, "viking_room_texture");
+  auto textureImageView = engine.createImageViewUnique(
+      textureImage.image.get(), vk::Format::eR8G8B8A8Srgb,
+      vk::ImageAspectFlagBits::eColor, textureImage.getMipLevels());
+  auto textureSampler = Vulking::createSampler();
+
+  updateDescriptorSets(descriptorSets, uboBuffers, textureImageView.get(),
+                       textureSampler.get());
   // this shouldn't be here end
 
-  while (true) {
+  while (!glfwWindowShouldClose(window)) {
+    std::cout << "polling events" << std::endl;
     glfwPollEvents();
+    std::cout << "beginning render" << std::endl;
     auto ok = engine.beginRender();
     if (!ok) {
+      std::cout << "beginRender returned false, skipped frame" << std::endl;
       continue;
     }
     auto [cmd, index] = ok.value();
     // draw frame start
 
     cmd.begin(vk::CommandBufferBeginInfo{});
+    updateUBO(uboBuffers[engine.getCurrentSwapchainResourceIndex()]);
 
     auto clearValues = std::array<vk::ClearValue, 2>{};
     clearValues[0].setColor(
@@ -117,11 +133,14 @@ int main() {
     cmd.end();
 
     // draw frame end
+    std::cout << "ending render" << std::endl;
     engine.endRender({cmd});
   }
+
+  Vulking::Engine::device->waitIdle();
 }
 
-void updateUBO(Vulking::Buffer<UBO> &buffer, uint32_t index) {
+void updateUBO(const Vulking::Buffer<UBO> &buffer) {
   static auto startTime = std::chrono::high_resolution_clock::now();
 
   auto currentTime = std::chrono::high_resolution_clock::now();
@@ -142,7 +161,7 @@ void updateUBO(Vulking::Buffer<UBO> &buffer, uint32_t index) {
                        0.1f, 10.0f);
   ubo.proj[1][1] *= -1;
 
-  buffer.set(&ubo, 1);
+  buffer.set(ubo);
 }
 
 void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
@@ -159,5 +178,25 @@ void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
             .setImageView(textureImageView)
             .setSampler(sampler);
+
+    std::array<vk::WriteDescriptorSet, 2> writes{};
+
+    // image must be in the correct layout here
+
+    writes[0]
+        .setDstSet(set.get())
+        .setDstBinding(0)
+        .setDstArrayElement(0)
+        .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+        .setBufferInfo(bufferInfo);
+
+    writes[1]
+        .setDstSet(set.get())
+        .setDstBinding(1)
+        .setDstArrayElement(0)
+        .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+        .setImageInfo(imageInfo);
+
+    Vulking::Engine::device->updateDescriptorSets(writes, {});
   }
 }

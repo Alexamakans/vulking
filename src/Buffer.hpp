@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_enums.hpp>
 
 namespace Vulking {
 struct BufferUsage {
@@ -14,6 +15,10 @@ struct BufferUsage {
       vk::BufferUsageFlagBits::eTransferDst;
   static constexpr vk::BufferUsageFlags UNIFORM =
       vk::BufferUsageFlagBits::eUniformBuffer;
+  static constexpr vk::BufferUsageFlags FINAL_VERTEX_BUFFER =
+      FINAL | vk::BufferUsageFlagBits::eVertexBuffer;
+  static constexpr vk::BufferUsageFlags FINAL_INDEX_BUFFER =
+      FINAL | vk::BufferUsageFlagBits::eIndexBuffer;
 };
 
 struct BufferMemory {
@@ -28,23 +33,51 @@ struct BufferMemory {
 };
 template <typename T> class Buffer {
 public:
-  Buffer() {}
+  Buffer() {
+    std::cout << "buffer default constructor: " << _name << std::endl;
+  };
+  Buffer(const Buffer &) = delete;
+  Buffer &operator=(const Buffer &) = delete;
+  Buffer(Buffer &&other) noexcept
+      : buffer(std::move(other.buffer)), memory(std::move(other.memory)),
+        _name(std::move(other._name)), size(other.size), pData(other.pData) {
+    std::cout << "buffer move: " << _name << std::endl;
+  }
+  Buffer &operator=(Buffer &&other) noexcept {
+    if (this != &other) {
+      std::cout << "buffer move assignment: " << _name << " <- " << other._name
+                << std::endl;
+      if (isMapped()) {
+        unmap();
+      }
+      buffer = std::move(other.buffer);
+      memory = std::move(other.memory);
+      _name = std::move(other._name);
+      size = other.size;
+      if (other.isMapped()) {
+        pData = other.pData;
+        other.pData = nullptr;
+      }
+    }
+    return *this;
+  };
+
   Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
-  Buffer(const std::vector<T> &src, vk::BufferUsageFlags usage,
+  Buffer(const vk::ArrayProxy<T> &src, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
   Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
          vk::MemoryPropertyFlags properties, const char *name = "unnamed");
 
-  vk::Buffer getBuffer() const { return buffer.get(); }
-  vk::DeviceMemory getMemory() const { return memory.get(); }
-  vk::DeviceSize getSize() const { return size; }
+  const vk::Buffer &getBuffer() const { return buffer.get(); }
+  const vk::DeviceMemory &getMemory() const { return memory.get(); }
+  const vk::DeviceSize &getSize() const { return size; }
 
   bool isMapped() const { return pData != nullptr; }
   void map();
   void mapTo(void **mapped);
   void set(const T *src, size_t size) const;
-  void set(const std::vector<T> &src) const;
+  void set(const vk::ArrayProxy<T> &src) const;
   void unmap();
 
   void copyTo(const Buffer &dst);
@@ -57,27 +90,36 @@ private:
   vk::UniqueBuffer buffer;
   vk::UniqueDeviceMemory memory;
   void *pData = nullptr;
+  std::string _name = "uninitialized";
 };
 
 template <typename T>
 inline Buffer<T>::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                          vk::MemoryPropertyFlags properties, const char *name)
     : size(size) {
+  std::cout << "buffer 1 constructor: " << name << std::endl;
+  assert(size != 0);
   init(usage, properties, name);
 }
 
 template <typename T>
-inline Buffer<T>::Buffer(const std::vector<T> &src, vk::BufferUsageFlags usage,
+inline Buffer<T>::Buffer(const vk::ArrayProxy<T> &src,
+                         vk::BufferUsageFlags usage,
                          vk::MemoryPropertyFlags properties, const char *name)
     : size(sizeof(T) * src.size()) {
+  std::cout << "buffer 2 constructor: " << name << std::endl;
+  assert(size != 0);
   init(usage, properties, name);
+  map();
   set(src.data(), size);
+  unmap();
 }
 
 template <typename T>
 Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
                   vk::MemoryPropertyFlags properties, const char *name)
     : size(size) {
+  std::cout << "buffer 3 constructor: " << name << std::endl;
   assert(size != 0);
   init(usage, properties, name);
   map();
@@ -88,6 +130,8 @@ Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
 template <typename T> void Buffer<T>::map() { mapTo(&pData); }
 
 template <typename T> void Buffer<T>::mapTo(void **mapped) {
+  std::cout << "\tmapped buffer: " << _name << std::endl;
+  assert(!isMapped());
   *mapped = Engine::device->mapMemory(memory.get(), 0, size);
   pData = *mapped;
 }
@@ -97,32 +141,37 @@ template <typename T> void Buffer<T>::set(const T *src, size_t size) const {
     throw std::runtime_error(
         std::format("size ({}) too large, must be <= {}", size, this->size));
   }
+  std::cout << "\t\tset buffer: " << _name << std::endl;
   assert(isMapped());
   memcpy(pData, src, size);
 }
 
-template <typename T> void Buffer<T>::set(const std::vector<T> &src) const {
+template <typename T> void Buffer<T>::set(const vk::ArrayProxy<T> &src) const {
   set(src.data(), sizeof(T) * src.size());
 }
 
 template <typename T> void Buffer<T>::unmap() {
+  std::cout << "\tunmapped buffer: " << _name << std::endl;
+  assert(isMapped());
   Engine::device->unmapMemory(memory.get());
   pData = nullptr;
 }
 
 template <typename T> void Buffer<T>::copyTo(const Buffer &dst) {
+  std::cout << "copy buffer " << _name << " -> " << dst._name << std::endl;
   assert(buffer);
   assert(dst.buffer);
+  assert(size != 0);
   auto cmd = Engine::beginCommand();
-  vk::BufferCopy copy{};
-  copy.size = size;
-  cmd.copyBuffer(buffer.get(), dst.buffer.get(), 1, &copy);
+  cmd.copyBuffer(buffer.get(), dst.getBuffer(), vk::BufferCopy().setSize(size));
   cmd.end();
+  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
 template <typename T>
 void Buffer<T>::init(vk::BufferUsageFlags usage,
                      vk::MemoryPropertyFlags properties, const char *name) {
+  _name = name;
   vk::BufferCreateInfo info{};
   info.setSize(size);
   info.setUsage(usage);
@@ -141,5 +190,7 @@ void Buffer<T>::init(vk::BufferUsageFlags usage,
 
   NAME_OBJECT(Engine::device, buffer.get(), std::format("{}_buffer", name));
   NAME_OBJECT(Engine::device, memory.get(), std::format("{}_memory", name));
+
+  Engine::device->bindBufferMemory(buffer.get(), memory.get(), 0);
 }
 } // namespace Vulking

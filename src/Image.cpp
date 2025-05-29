@@ -19,7 +19,7 @@ Image::Image(uint32_t width, uint32_t height, uint32_t mipLevels,
              vk::MemoryPropertyFlags memoryProperties, const char *name) {
   auto info = vk::ImageCreateInfo{}
                   .setImageType(vk::ImageType::e2D)
-                  .setExtent(vk::Extent3D(width, height))
+                  .setExtent(vk::Extent3D(width, height, 1))
                   .setMipLevels(mipLevels)
                   .setArrayLayers(1)
                   .setFormat(format)
@@ -34,6 +34,8 @@ Image::Image(uint32_t width, uint32_t height, uint32_t mipLevels,
 
 Image::Image(const std::string &path, vk::SampleCountFlagBits samples,
              vk::Format format, const char *name) {
+  // loading and mipmapping should be separated into their own functions or
+  // something loading should probably go in Common.hpp or Util.hpp
   const auto [data, width, height] = loadRgba8888Texture(path.c_str());
   const auto mipLevels =
       1 + static_cast<uint32_t>(std::floor(std::log2(std::min(width, height))));
@@ -42,24 +44,27 @@ Image::Image(const std::string &path, vk::SampleCountFlagBits samples,
   auto info =
       vk::ImageCreateInfo()
           .setImageType(vk::ImageType::e2D)
-          .setExtent(vk::Extent3D(width, height))
+          .setExtent(vk::Extent3D(width, height, 1))
           .setMipLevels(mipLevels)
           .setArrayLayers(1)
           .setFormat(format)
           .setTiling(vk::ImageTiling::eOptimal)
           .setInitialLayout(vk::ImageLayout::eUndefined)
           .setUsage(Usage(eTransferSrc) | Usage(eTransferDst) | Usage(eSampled))
-          .setSamples(samples)
+          .setSamples(vk::SampleCountFlagBits::e1)
           .setSharingMode(vk::SharingMode::eExclusive);
   init(info, vk::MemoryPropertyFlagBits::eDeviceLocal, name);
 #undef Usage
   Buffer<char> buffer(data, BufferUsage::STAGING, BufferMemory::STAGING);
 
-#define Transition(from, to)                                                   \
-  transitionImageLayout(image, format, vk::ImageLayout::from,                  \
-                        vk::ImageLayout::to);
+  transitionImageLayout(image.get(), format, mipLevels,
+                        vk::ImageLayout::eUndefined,
+                        vk::ImageLayout::eTransferDstOptimal);
   copyBufferToImage(buffer.getBuffer(), image.get(), width, height);
-#undef Transition
+  // transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating
+  // mipmaps
+  generateMipmaps(image.get(), format, static_cast<int32_t>(width),
+                  static_cast<int32_t>(height), mipLevels);
 }
 
 void Image::init(vk::ImageCreateInfo info,
@@ -80,5 +85,8 @@ void Image::init(vk::ImageCreateInfo info,
   NAME_OBJECT(Engine::device, memory.get(), name);
 
   Engine::device->bindImageMemory(image.get(), memory.get(), 0);
+  mipLevels = info.mipLevels;
+  width = info.extent.width;
+  height = info.extent.height;
 }
 } // namespace Vulking

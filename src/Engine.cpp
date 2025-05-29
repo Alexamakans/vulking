@@ -2,16 +2,29 @@
 #include "Common.hpp"
 #include "Constants.hpp"
 #include "Functions.hpp"
+#include "UniqueSurface.hpp"
 #include "vulking/Image.hpp"
 
 #include <cassert>
 #include <iostream>
+#include <optional>
+#include <ranges>
 #include <set>
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
-#include <vulkan/vulkan_structs.hpp>
+
+struct QueueFamilyIndices {
+  std::optional<uint32_t> graphicsFamily;
+  std::optional<uint32_t> presentFamily;
+
+  bool isComplete() {
+    return graphicsFamily.has_value() && presentFamily.has_value();
+  }
+};
+
+QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice,
+                                     vk::SurfaceKHR surface);
 
 namespace Vulking {
 
@@ -27,7 +40,10 @@ vk::UniqueSwapchainKHR Engine::swapchain;
 vk::Format Engine::swapchainImageFormat;
 vk::Extent2D Engine::swapchainExtent;
 
-uint32_t Engine::imageIndex = 0;
+vk::SampleCountFlagBits Engine::msaaSamples = vk::SampleCountFlagBits::e1;
+
+vk::Queue Engine::graphicsQueue;
+vk::Queue Engine::presentQueue;
 
 Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                uint32_t applicationVersion,
@@ -46,9 +62,8 @@ Engine::Engine(GLFWwindow *window, const char *applicationInfo,
 
   Engine::physicalDevice = getSuitablePhysicalDevice();
   Engine::device = createDevice();
+
   Engine::commandPool = createCommandPool();
-  DYNAMIC_DISPATCHER = vk::detail::DispatchLoaderDynamic(
-      instance.get(), vkGetInstanceProcAddr, device.get(), vkGetDeviceProcAddr);
 
   // Move swapchain stuff to own function so we can recreate easily
   Engine::swapchain = createSwapchain();
@@ -61,25 +76,63 @@ Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                                       vk::ImageAspectFlagBits::eColor, 1);
   }
 
-  Engine::colorImage =
-      Image(swapchainExtent.width, swapchainExtent.height, 1, msaaSamples,
-            swapchainImageFormat, vk::ImageTiling::eOptimal,
-            vk::ImageUsageFlagBits::eTransientAttachment |
-                vk::ImageUsageFlagBits::eColorAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal);
-  Engine::colorImageView =
-      createImageViewUnique(colorImage.image.get(), swapchainImageFormat,
-                            vk::ImageAspectFlagBits::eColor, 1);
+  // color image (extract later)
+  {
+    colorImage =
+        Image(swapchainExtent.width, swapchainExtent.height, 1, msaaSamples,
+              swapchainImageFormat, vk::ImageTiling::eOptimal,
+              vk::ImageUsageFlagBits::eTransientAttachment |
+                  vk::ImageUsageFlagBits::eColorAttachment,
+              vk::MemoryPropertyFlagBits::eDeviceLocal);
+    colorImageView =
+        createImageViewUnique(colorImage.image.get(), swapchainImageFormat,
+                              vk::ImageAspectFlagBits::eColor, 1);
+  }
 
-  auto depthFormat = findDepthFormat();
-  Engine::depthImage =
-      Image(swapchainExtent.width, swapchainExtent.height, 1, msaaSamples,
-            depthFormat, vk::ImageTiling::eOptimal,
-            vk::ImageUsageFlagBits::eTransientAttachment |
-                vk::ImageUsageFlagBits::eDepthStencilAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal);
-  Engine::depthImageView = createImageViewUnique(
-      depthImage.image.get(), depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+  // depth image (extract later)
+  {
+    const auto depthFormat = findDepthFormat();
+    depthImage = Image(swapchainExtent.width, swapchainExtent.height, 1,
+                       msaaSamples, depthFormat, vk::ImageTiling::eOptimal,
+                       vk::ImageUsageFlagBits::eTransientAttachment |
+                           vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                       vk::MemoryPropertyFlagBits::eDeviceLocal);
+    depthImageView = createImageViewUnique(depthImage.image.get(), depthFormat,
+                                           vk::ImageAspectFlagBits::eDepth, 1);
+  }
+
+  // command buffers (extract later)
+  {
+    commandBuffers = device->allocateCommandBuffersUnique(
+        vk::CommandBufferAllocateInfo()
+            .setCommandPool(commandPool.get())
+            .setLevel(vk::CommandBufferLevel::ePrimary)
+            .setCommandBufferCount(swapchainImageCount));
+    for (const auto &[i, cmd] : std::ranges::views::enumerate(commandBuffers)) {
+      NAME_OBJECT(device, cmd.get(),
+                  std::format("engine_command_buffer_{}", i));
+    }
+  }
+
+  // sync objects (extract later)
+  {
+    // Create the fence signaled to simplify our sync loop in begin/end render.
+    const auto fenceInfo =
+        vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
+    inFlightFences.resize(swapchainImageCount);
+
+    const auto semaphoreInfo = vk::SemaphoreCreateInfo();
+    imageAvailableSemaphores.resize(swapchainImageCount);
+    renderFinishedSemaphores.resize(swapchainImageCount);
+
+    for (uint32_t i = 0; i < swapchainImageCount; i++) {
+      inFlightFences[i] = device->createFenceUnique(fenceInfo);
+      imageAvailableSemaphores[i] =
+          device->createSemaphoreUnique(semaphoreInfo);
+      renderFinishedSemaphores[i] =
+          device->createSemaphoreUnique(semaphoreInfo);
+    }
+  }
 }
 
 vk::CommandBuffer Engine::beginCommand() {
@@ -94,6 +147,78 @@ vk::CommandBuffer Engine::beginCommand() {
   commandBuffer.begin(beginInfo);
   return commandBuffer;
 }
+
+std::optional<std::tuple<vk::CommandBuffer, uint32_t>> Engine::beginRender() {
+  const auto index = getCurrentSwapchainResourceIndex();
+  const auto waitFenceResult =
+      device->waitForFences(inFlightFences[index].get(), vk::True, UINT64_MAX);
+  if (waitFenceResult == vk::Result::eErrorDeviceLost) {
+    throw std::runtime_error("device lost");
+  }
+
+  const auto acquire =
+      device->acquireNextImageKHR(Engine::swapchain.get(), UINT64_MAX,
+                                  imageAvailableSemaphores[index].get());
+  const auto acquireResult = acquire.result;
+
+  if (acquireResult == vk::Result::eErrorOutOfDateKHR) {
+    // recreate swapchain
+    throw std::runtime_error("swapchain recreation not implemented yet");
+    return std::nullopt;
+  } else if (acquireResult != vk::Result::eSuccess &&
+             acquireResult != vk::Result::eSuboptimalKHR) {
+    throw std::runtime_error("failed to acquire swapchain image");
+  }
+
+  currentImageIndex = acquire.value;
+  device->resetFences(inFlightFences[index].get());
+  commandBuffers[index]->reset();
+
+  return std::make_tuple(commandBuffers[index].get(), currentImageIndex);
+}
+
+vk::Framebuffer Engine::getFramebuffer() {
+  return swapchainFramebuffers[getCurrentSwapchainResourceIndex()].get();
+}
+
+void Engine::endRender(const std::vector<vk::CommandBuffer> &commandBuffers) {
+  const auto index = getCurrentSwapchainResourceIndex();
+
+  std::vector<vk::PipelineStageFlags> waitDstStageMask{
+      vk::PipelineStageFlagBits::eColorAttachmentOutput};
+  const auto submitInfo =
+      vk::SubmitInfo()
+          .setWaitSemaphores({imageAvailableSemaphores[index].get()})
+          .setWaitDstStageMask(waitDstStageMask)
+          .setCommandBuffers(commandBuffers)
+          .setSignalSemaphores({renderFinishedSemaphores[index].get()});
+
+  graphicsQueue.submit(submitInfo, inFlightFences[index].get());
+
+  const auto presentInfo =
+      vk::PresentInfoKHR{}
+          .setWaitSemaphores({renderFinishedSemaphores[index].get()})
+          .setSwapchains({swapchain.get()})
+          .setImageIndices({currentImageIndex});
+
+  const auto presentResult = presentQueue.presentKHR(presentInfo);
+  if (presentResult == vk::Result::eErrorOutOfDateKHR ||
+      presentResult == vk::Result::eSuboptimalKHR || framebufferResized) {
+    framebufferResized = false;
+    // recreate swapchain
+    throw std::runtime_error("swapchain recreation not implemented yet");
+  } else if (presentResult != vk::Result::eSuccess) {
+    throw std::runtime_error("failed to present swapchain image");
+  }
+
+  ++frame;
+}
+
+uint32_t Engine::getCurrentSwapchainResourceIndex() {
+  return frame % swapchainImageCount;
+}
+
+uint32_t Engine::getSwapchainImageCount() { return swapchainImageCount; }
 
 vk::ImageView Engine::createImageView(vk::Image image, vk::Format format,
                                       vk::ImageAspectFlags aspectFlags,
@@ -155,6 +280,13 @@ void Engine::createFramebuffers(const vk::UniqueRenderPass &renderPass) {
   }
 }
 
+void Engine::endAndSubmitGraphicsCommand(vk::CommandBuffer&& cmd) {
+  cmd.end();
+  graphicsQueue.submit(vk::SubmitInfo().setCommandBuffers(cmd));
+  device->waitIdle();
+  device->freeCommandBuffers(commandPool.get(), cmd);
+}
+
 vk::UniqueInstance
 Engine::createInstance(const char *applicationInfo, uint32_t applicationVersion,
                        const std::vector<const char *> &requiredExtensions) {
@@ -163,7 +295,7 @@ Engine::createInstance(const char *applicationInfo, uint32_t applicationVersion,
   appInfo.setApplicationVersion(applicationVersion);
   appInfo.setPEngineName("Vulking");
   appInfo.setEngineVersion(vk::makeApiVersion(0, 0, 0, 1));
-  appInfo.setApiVersion(vk::ApiVersion14);
+  appInfo.setApiVersion(vk::ApiVersion13);
   vk::InstanceCreateInfo info{};
   info.setPApplicationInfo(&appInfo);
   info.setPApplicationInfo(&appInfo);
@@ -172,7 +304,7 @@ Engine::createInstance(const char *applicationInfo, uint32_t applicationVersion,
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
   info.setPEnabledExtensionNames(extensions);
-  auto _instance = vk::createInstanceUnique(info, ALLOCATOR);
+  auto _instance = vk::createInstanceUnique(info);
   return _instance;
 }
 
@@ -180,6 +312,27 @@ vk::PhysicalDevice Engine::getSuitablePhysicalDevice() {
   auto physicalDevices = instance->enumeratePhysicalDevices();
   for (const auto &physicalDevice : physicalDevices) {
     if (isDeviceSuitable(physicalDevice)) {
+      const auto props = physicalDevice.getProperties();
+      const auto counts = props.limits.framebufferColorSampleCounts &
+                          props.limits.framebufferDepthSampleCounts;
+      const std::array<vk::SampleCountFlagBits, 6> sampleCounts = {
+          vk::SampleCountFlagBits::e64, vk::SampleCountFlagBits::e32,
+          vk::SampleCountFlagBits::e16, vk::SampleCountFlagBits::e8,
+          vk::SampleCountFlagBits::e4,  vk::SampleCountFlagBits::e2,
+      };
+
+      for (const auto sampleCount : sampleCounts) {
+        if (counts & sampleCount) {
+          msaaSamples = sampleCount;
+          break;
+        }
+      }
+
+      if (msaaSamples == vk::SampleCountFlagBits{}) {
+        // validation gets angry when setting it to 1, not entirely sure why
+        // can't really do anything else though?
+        msaaSamples = vk::SampleCountFlagBits::e1;
+      }
       return physicalDevice;
     }
   }
@@ -205,8 +358,11 @@ bool Engine::isDeviceSuitable(vk::PhysicalDevice physicalDevice) const {
 }
 
 vk::UniqueDevice Engine::createDevice() {
-  vk::ArrayProxy<float> queuePriorities = 1.0f;
+  const auto indices = findQueueFamilies(physicalDevice, surface.get());
+  graphicsQueueFamily = indices.graphicsFamily.value();
+  presentQueueFamily = indices.presentFamily.value();
 
+  vk::ArrayProxy<float> queuePriorities = 1.0f;
   std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
   std::set<uint32_t> uniqueFamilies = {graphicsQueueFamily, presentQueueFamily};
 
@@ -217,18 +373,48 @@ vk::UniqueDevice Engine::createDevice() {
     queueCreateInfos.push_back(queueCreateInfo);
   }
 
+  vk::PhysicalDeviceFeatures supportedFeatures = physicalDevice.getFeatures();
+  if (!supportedFeatures.samplerAnisotropy) {
+    throw std::runtime_error("Device doesn't support sampler anisotropy");
+  }
+  if (ENABLE_SAMPLE_SHADING && !supportedFeatures.sampleRateShading) {
+    throw std::runtime_error("Device doesn't support sample rate shading");
+  }
+
   vk::PhysicalDeviceFeatures deviceFeatures{};
   deviceFeatures.samplerAnisotropy = VK_TRUE;
   if (ENABLE_SAMPLE_SHADING) {
     deviceFeatures.sampleRateShading = VK_TRUE;
   }
 
-  vk::DeviceCreateInfo createInfo{};
-  createInfo.setQueueCreateInfos(queueCreateInfos);
-  createInfo.setPEnabledFeatures(&deviceFeatures);
-  createInfo.setPEnabledExtensionNames(DEVICE_EXTENSIONS);
+  const auto supportedExtensions =
+      physicalDevice.enumerateDeviceExtensionProperties();
+  for (const auto &ext : DEVICE_EXTENSIONS) {
+    bool found = std::ranges::any_of(supportedExtensions, [&](const auto &e) {
+      return strcmp(ext, e.extensionName) == 0;
+    });
+    if (!found) {
+      throw std::runtime_error(std::string("Missing required extension: ") +
+                               ext);
+    }
+  }
 
-  return physicalDevice.createDeviceUnique(createInfo, ALLOCATOR);
+  const auto createInfo =
+      vk::DeviceCreateInfo()
+          .setQueueCreateInfos(queueCreateInfos)
+          .setPEnabledFeatures(&deviceFeatures)
+          .setPEnabledExtensionNames(DEVICE_EXTENSIONS)
+          .setPNext(vk::PhysicalDeviceSynchronization2FeaturesKHR{}
+                        .setSynchronization2(vk::True));
+
+  auto device = physicalDevice.createDeviceUnique(createInfo);
+  DYNAMIC_DISPATCHER = vk::detail::DispatchLoaderDynamic(
+      instance.get(), vkGetInstanceProcAddr, device.get(), vkGetDeviceProcAddr);
+
+  graphicsQueue = device->getQueue(graphicsQueueFamily, 0);
+  presentQueue = device->getQueue(presentQueueFamily, 0);
+
+  return device;
 }
 
 vk::SurfaceFormatKHR chooseSwapSurfaceFormat(
@@ -333,3 +519,28 @@ vk::UniqueCommandPool Engine::createCommandPool() {
   return device->createCommandPoolUnique(info);
 }
 } // namespace Vulking
+
+QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice,
+                                     vk::SurfaceKHR surface) {
+  QueueFamilyIndices indices;
+
+  const auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+
+  for (const auto [i, queueFamily] :
+       std::ranges::views::enumerate(queueFamilies)) {
+    if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
+      indices.graphicsFamily = i;
+    }
+
+    const auto presentSupport = physicalDevice.getSurfaceSupportKHR(i, surface);
+    if (presentSupport) {
+      indices.presentFamily = i;
+    }
+
+    if (indices.isComplete()) {
+      break;
+    }
+  }
+
+  return indices;
+}

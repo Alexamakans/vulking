@@ -36,12 +36,12 @@ public:
                                      .setOffset(offsetof(Vertex, pos));
       attributeDescriptions[1] = vk::VertexInputAttributeDescription()
                                      .setBinding(0)
-                                     .setLocation(2)
+                                     .setLocation(1)
                                      .setFormat(vec3)
                                      .setOffset(offsetof(Vertex, color));
       attributeDescriptions[2] = vk::VertexInputAttributeDescription()
                                      .setBinding(0)
-                                     .setLocation(3)
+                                     .setLocation(2)
                                      .setFormat(vec2)
                                      .setOffset(offsetof(Vertex, texCoord));
 

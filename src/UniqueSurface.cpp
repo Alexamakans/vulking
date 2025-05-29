@@ -1,4 +1,4 @@
-#include "ScopedSurface.hpp"
+#include "UniqueSurface.hpp"
 
 Vulking::UniqueSurface::UniqueSurface() : instance(nullptr), surface(nullptr) {}
 

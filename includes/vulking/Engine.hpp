@@ -2,11 +2,7 @@
 
 #include "Common.hpp"
 #include "Image.hpp"
-#include "ScopedSurface.hpp"
-#include <limits>
-#include <optional>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_handles.hpp>
+#include "UniqueSurface.hpp"
 
 #define VULKING_MAKE_VERSION(major, minor, patch)                              \
   VK_MAKE_VERSION(major, minor, patch)
@@ -21,73 +17,15 @@ public:
   static vk::CommandBuffer beginCommand();
 
   /* tuple<command buffer to populate, current swapchain resourceIndex> */
-  std::optional<std::tuple<vk::CommandBuffer, uint32_t>> beginRender() {
-    const auto index = getCurrentSwapchainResourceIndex();
-    const auto waitFenceResult =
-        device->waitForFences(inFlightFences[index], vk::True, UINT64_MAX);
-    if (waitFenceResult == vk::Result::eErrorDeviceLost) {
-      throw std::runtime_error("device lost");
-    }
+  std::optional<std::tuple<vk::CommandBuffer, uint32_t>> beginRender();
 
-    const auto acquire = device->acquireNextImageKHR(
-        Engine::swapchain.get(), UINT64_MAX, imageAvailableSemaphores[index]);
-    const auto acquireResult = acquire.result;
+  vk::Framebuffer getFramebuffer();
 
-    if (acquireResult == vk::Result::eErrorOutOfDateKHR) {
-      // recreate swapchain
-      throw std::runtime_error("swapchain recreation not implemented yet");
-      return std::nullopt;
-    } else if (acquireResult != vk::Result::eSuccess &&
-               acquireResult != vk::Result::eSuboptimalKHR) {
-      throw std::runtime_error("failed to acquire swapchain image");
-    }
-
-    currentImageIndex = acquire.value;
-    device->resetFences(inFlightFences[index]);
-    auto commandBuffer = commandBuffers[index];
-    vkResetCommandBuffer(commandBuffer, 0);
-
-    return std::make_tuple(commandBuffer, currentImageIndex);
-  }
-
-  vk::Framebuffer getFramebuffer() {
-    return swapchainFramebuffers[getCurrentSwapchainResourceIndex()].get();
-  }
-
-  void endRender(const std::vector<vk::CommandBuffer> &commandBuffers) {
-    const auto index = getCurrentSwapchainResourceIndex();
-
-    const auto waitDstStageMask =
-        vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    const auto submitInfo =
-        vk::SubmitInfo{}
-            .setWaitSemaphores({imageAvailableSemaphores[index]})
-            .setWaitDstStageMask({waitDstStageMask})
-            .setCommandBuffers(commandBuffers)
-            .setSignalSemaphores({renderFinishedSemaphores[index]});
-
-    graphicsQueue.submit(submitInfo, inFlightFences[index]);
-
-    const auto presentInfo =
-        vk::PresentInfoKHR{}
-            .setWaitSemaphores({renderFinishedSemaphores[index]})
-            .setSwapchains({swapchain.get()})
-            .setImageIndices({currentImageIndex});
-
-    const auto presentResult = presentQueue.presentKHR(presentInfo);
-    if (presentResult == vk::Result::eErrorOutOfDateKHR ||
-        presentResult == vk::Result::eSuboptimalKHR || framebufferResized) {
-      framebufferResized = false;
-      // recreate swapchain
-      throw std::runtime_error("swapchain recreation not implemented yet");
-    } else if (presentResult != vk::Result::eSuccess) {
-      throw std::runtime_error("failed to present swapchain image");
-    }
-
-    ++frame;
-  }
+  void endRender(const std::vector<vk::CommandBuffer> &commandBuffers);
 
   static GLFWwindow *window;
+  // static + unique is not great, move all static stuff to instance properties
+  // and expose some other way
   static vk::UniqueInstance instance;
   static vk::PhysicalDevice physicalDevice;
   static vk::UniqueDevice device;
@@ -98,11 +36,9 @@ public:
   static vk::Format swapchainImageFormat;
   static vk::Extent2D swapchainExtent;
 
-  uint32_t getCurrentSwapchainResourceIndex() {
-    return frame % swapchainImageCount;
-  }
+  uint32_t getCurrentSwapchainResourceIndex();
 
-  uint32_t getSwapchainImageCount() { return swapchainImageCount; }
+  uint32_t getSwapchainImageCount();
 
   static vk::ImageView createImageView(vk::Image image, vk::Format format,
                                        vk::ImageAspectFlags aspectFlags,
@@ -115,8 +51,9 @@ public:
 
   void createFramebuffers(const vk::UniqueRenderPass &renderPass);
 
-  static const vk::SampleCountFlagBits msaaSamples =
-      vk::SampleCountFlagBits::e1;
+  static vk::SampleCountFlagBits msaaSamples;
+
+  static void endAndSubmitGraphicsCommand(vk::CommandBuffer &&cmd);
 
 private:
   vk::UniqueInstance
@@ -132,8 +69,8 @@ private:
 
   UniqueSurface surface{};
 
-  vk::Queue graphicsQueue;
-  vk::Queue presentQueue;
+  static vk::Queue graphicsQueue;
+  static vk::Queue presentQueue;
 
   uint32_t graphicsQueueFamily;
   uint32_t presentQueueFamily;
@@ -150,13 +87,12 @@ private:
   Image depthImage;
   vk::UniqueImageView depthImageView;
 
-  vk::Pipeline graphicsPipeline;
-  vk::PipelineLayout graphicsPipelineLayout;
-
   uint32_t frame = 0;
-  std::vector<vk::Fence> inFlightFences;
-  std::vector<vk::Semaphore> imageAvailableSemaphores;
-  std::vector<vk::Semaphore> renderFinishedSemaphores;
-  std::vector<vk::CommandBuffer> commandBuffers;
+
+  // TODO: Create these resources
+  std::vector<vk::UniqueCommandBuffer> commandBuffers;
+  std::vector<vk::UniqueFence> inFlightFences;
+  std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
+  std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
 };
 } // namespace Vulking

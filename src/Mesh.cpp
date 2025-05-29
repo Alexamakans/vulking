@@ -1,5 +1,6 @@
 #include "Mesh.hpp"
 #include "Buffer.hpp"
+#include "Functions.hpp"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -13,6 +14,7 @@ Mesh::Mesh() {}
 
 Mesh::Mesh(const std::string &path, const char *name) {
   loadModel(path, cpuVertices, cpuIndices);
+  init(name);
 }
 
 Mesh::Mesh(const std::vector<Vertex> &vertices,
@@ -38,19 +40,23 @@ void Mesh::bind(vk::CommandBuffer cmd) {
 void Mesh::init(const char *name) {
   numVertices = static_cast<uint32_t>(cpuVertices.size());
   numIndices = static_cast<uint32_t>(cpuIndices.size());
+  assert(numVertices != 0);
+  assert(numIndices != 0);
   auto verticesStaging =
       Buffer<Vertex>(cpuVertices, BufferUsage::STAGING, BufferMemory::STAGING,
                      std::format("{}_vertex_staging", name).c_str());
-  vertices = Buffer<Vertex>(verticesStaging.getSize(), BufferUsage::FINAL,
-                            BufferMemory::FINAL,
-                            std::format("{}_vertex", name).c_str());
+  vertices = Buffer<Vertex>(
+      verticesStaging.getSize(), BufferUsage::FINAL_VERTEX_BUFFER,
+      BufferMemory::FINAL, std::format("{}_vertex", name).c_str());
+  verticesStaging.copyTo(vertices);
 
   auto indicesStaging =
       Buffer<Index>(cpuIndices, BufferUsage::STAGING, BufferMemory::STAGING,
                     std::format("{}_index_staging", name).c_str());
   indices =
-      Buffer<Index>(indicesStaging.getSize(), BufferUsage::FINAL,
+      Buffer<Index>(indicesStaging.getSize(), BufferUsage::FINAL_INDEX_BUFFER,
                     BufferMemory::FINAL, std::format("{}_index", name).c_str());
+  indicesStaging.copyTo(indices);
 }
 
 static void loadModel(const std::string &path,
