@@ -9,9 +9,6 @@
 #include <optional>
 #include <ranges>
 #include <set>
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_enums.hpp>
-#include <vulkan/vulkan_handles.hpp>
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphicsFamily;
@@ -31,6 +28,8 @@ Engine *Engine::engineInstance = nullptr;
 Engine::Engine(GLFWwindow *window, const char *applicationInfo,
                uint32_t applicationVersion,
                const std::vector<const char *> &requiredExtensions) {
+  Engine::engineInstance = this;
+
   context.window = window;
   context.instance =
       createInstance(applicationInfo, applicationVersion, requiredExtensions);
@@ -145,7 +144,6 @@ Engine::createInstance(const char *applicationInfo, uint32_t applicationVersion,
   appInfo.setApiVersion(vk::ApiVersion13);
   vk::InstanceCreateInfo info{};
   info.setPApplicationInfo(&appInfo);
-  info.setPApplicationInfo(&appInfo);
   auto extensions = requiredExtensions;
   if (enableValidationLayers) {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -204,6 +202,18 @@ bool Engine::isDeviceSuitable(vk::PhysicalDevice physicalDevice) const {
          props.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 }
 
+struct LoggingDeviceDeleter {
+  vk::Device device;
+
+  LoggingDeviceDeleter() = default;
+  explicit LoggingDeviceDeleter(vk::Device d) : device(d) {}
+
+  void operator()(vk::Device d) const noexcept {
+    std::cout << "[DEBUG] Destroying vk::Device at " << d << std::endl;
+    d.destroy();
+  }
+};
+
 vk::UniqueDevice Engine::createDevice() {
   const auto indices =
       findQueueFamilies(context.physicalDevice, context.surface.get());
@@ -249,13 +259,14 @@ vk::UniqueDevice Engine::createDevice() {
     }
   }
 
-  const auto createInfo =
-      vk::DeviceCreateInfo()
-          .setQueueCreateInfos(queueCreateInfos)
-          .setPEnabledFeatures(&deviceFeatures)
-          .setPEnabledExtensionNames(DEVICE_EXTENSIONS)
-          .setPNext(vk::PhysicalDeviceSynchronization2FeaturesKHR{}
-                        .setSynchronization2(vk::True));
+  const auto sync2Features =
+      vk::PhysicalDeviceSynchronization2FeaturesKHR{}.setSynchronization2(
+          vk::True);
+  const auto createInfo = vk::DeviceCreateInfo()
+                              .setQueueCreateInfos(queueCreateInfos)
+                              .setPEnabledFeatures(&deviceFeatures)
+                              .setPEnabledExtensionNames(DEVICE_EXTENSIONS)
+                              .setPNext(&sync2Features);
 
   auto device = context.physicalDevice.createDeviceUnique(createInfo);
   DYNAMIC_DISPATCHER = vk::detail::DispatchLoaderDynamic(

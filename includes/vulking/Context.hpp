@@ -3,7 +3,6 @@
 #include "Common.hpp"
 #include "Image.hpp"
 #include "UniqueSurface.hpp"
-#include <vulkan/vulkan_enums.hpp>
 
 namespace Vulking {
 struct Swapchain {
@@ -66,7 +65,7 @@ struct Context {
 
   uint32_t frame;
 
-  vk::CommandBuffer beginCommand();
+  vk::CommandBuffer beginCommand(const char *name = "unnamed");
   void endAndSubmitGraphicsCommand(vk::CommandBuffer &&cmd);
 
   /* tuple<command buffer to populate, current swapchain resourceIndex> */

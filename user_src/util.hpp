@@ -9,18 +9,21 @@ GLFWwindow *createWindow();
 struct Shader {
   vk::ShaderModule module;
   std::string entrypoint;
+
+  void destroy();
 };
 
-vk::UniqueRenderPass createRenderPass();
+vk::UniqueRenderPass createRenderPass(const Vulking::Context &ctx);
 
-vk::UniqueDescriptorSetLayout createDescriptorSetLayout();
+vk::UniqueDescriptorSetLayout
+createDescriptorSetLayout(const Vulking::Context &ctx);
 
-Shader loadShader(const std::string &path,
+Shader loadShader(const Vulking::Context &ctx, const std::string &path,
                   const std::string &entrypoint = "main",
                   const char *name = "unnamed");
 
 std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
-    const vk::UniqueRenderPass &renderPass,
+    const Vulking::Context &ctx, const vk::UniqueRenderPass &renderPass,
     const std::map<vk::ShaderStageFlagBits, Shader> &shaders,
     const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts,
     const char *name = "unnamed");

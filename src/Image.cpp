@@ -69,22 +69,24 @@ Image::Image(const std::string &path, vk::SampleCountFlagBits samples,
 
 void Image::init(vk::ImageCreateInfo info,
                  vk::MemoryPropertyFlags memoryProperties, const char *name) {
-  image = Engine::device->createImageUnique(info);
-  NAME_OBJECT(Engine::device, image.get(), name);
+  std::cout << "Device: " << std::hex << Engine::ctx().device.get()
+            << std::endl;
+  image = Engine::ctx().device->createImageUnique(info);
+  NAME_OBJECT(Engine::ctx().device, image.get(), name);
 
   auto memoryRequirements =
-      Engine::device->getImageMemoryRequirements(image.get());
+      Engine::ctx().device->getImageMemoryRequirements(image.get());
 
   vk::MemoryAllocateInfo allocInfo;
   allocInfo.setAllocationSize(memoryRequirements.size);
-  allocInfo.setMemoryTypeIndex(findMemoryType(Engine::physicalDevice,
+  allocInfo.setMemoryTypeIndex(findMemoryType(Engine::ctx().physicalDevice,
                                               memoryRequirements.memoryTypeBits,
                                               memoryProperties));
 
-  memory = Engine::device->allocateMemoryUnique(allocInfo);
-  NAME_OBJECT(Engine::device, memory.get(), name);
+  memory = Engine::ctx().device->allocateMemoryUnique(allocInfo);
+  NAME_OBJECT(Engine::ctx().device, memory.get(), name);
 
-  Engine::device->bindImageMemory(image.get(), memory.get(), 0);
+  Engine::ctx().device->bindImageMemory(image.get(), memory.get(), 0);
   mipLevels = info.mipLevels;
   width = info.extent.width;
   height = info.extent.height;

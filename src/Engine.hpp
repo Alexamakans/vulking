@@ -3,9 +3,6 @@
 #include "Common.hpp"
 #include "Context.hpp"
 
-#define VULKING_MAKE_VERSION(major, minor, patch)                              \
-  VK_MAKE_VERSION(major, minor, patch)
-
 namespace Vulking {
 class Engine {
 public:

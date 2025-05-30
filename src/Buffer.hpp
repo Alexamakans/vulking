@@ -132,7 +132,7 @@ template <typename T> void Buffer<T>::map() { mapTo(&pData); }
 template <typename T> void Buffer<T>::mapTo(void **mapped) {
   std::cout << "\tmapped buffer: " << _name << std::endl;
   assert(!isMapped());
-  *mapped = Engine::device->mapMemory(memory.get(), 0, size);
+  *mapped = Engine::ctx().device->mapMemory(memory.get(), 0, size);
   pData = *mapped;
 }
 
@@ -153,7 +153,7 @@ template <typename T> void Buffer<T>::set(const vk::ArrayProxy<T> &src) const {
 template <typename T> void Buffer<T>::unmap() {
   std::cout << "\tunmapped buffer: " << _name << std::endl;
   assert(isMapped());
-  Engine::device->unmapMemory(memory.get());
+  Engine::ctx().device->unmapMemory(memory.get());
   pData = nullptr;
 }
 
@@ -162,10 +162,10 @@ template <typename T> void Buffer<T>::copyTo(const Buffer &dst) {
   assert(buffer);
   assert(dst.buffer);
   assert(size != 0);
-  auto cmd = Engine::beginCommand();
+  auto cmd = Engine::ctx().beginCommand(
+      std::format("copyTo_command_{}", _name).c_str());
   cmd.copyBuffer(buffer.get(), dst.getBuffer(), vk::BufferCopy().setSize(size));
-  cmd.end();
-  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+  Engine::ctx().endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
 template <typename T>
@@ -176,21 +176,24 @@ void Buffer<T>::init(vk::BufferUsageFlags usage,
   info.setSize(size);
   info.setUsage(usage);
   info.setSharingMode(vk::SharingMode::eExclusive);
-  buffer = Engine::device->createBufferUnique(info);
+  buffer = Engine::ctx().device->createBufferUnique(info);
 
   auto memoryRequirements =
-      Engine::device->getBufferMemoryRequirements(buffer.get());
+      Engine::ctx().device->getBufferMemoryRequirements(buffer.get());
 
   vk::MemoryAllocateInfo allocInfo{};
   allocInfo.setAllocationSize(memoryRequirements.size);
-  allocInfo.setMemoryTypeIndex(findMemoryType(
-      Engine::physicalDevice, memoryRequirements.memoryTypeBits, properties));
+  allocInfo.setMemoryTypeIndex(findMemoryType(Engine::ctx().physicalDevice,
+                                              memoryRequirements.memoryTypeBits,
+                                              properties));
 
-  memory = Engine::device->allocateMemoryUnique(allocInfo, ALLOCATOR);
+  memory = Engine::ctx().device->allocateMemoryUnique(allocInfo, ALLOCATOR);
 
-  NAME_OBJECT(Engine::device, buffer.get(), std::format("{}_buffer", name));
-  NAME_OBJECT(Engine::device, memory.get(), std::format("{}_memory", name));
+  NAME_OBJECT(Engine::ctx().device, buffer.get(),
+              std::format("{}_buffer", name));
+  NAME_OBJECT(Engine::ctx().device, memory.get(),
+              std::format("{}_memory", name));
 
-  Engine::device->bindBufferMemory(buffer.get(), memory.get(), 0);
+  Engine::ctx().device->bindBufferMemory(buffer.get(), memory.get(), 0);
 }
 } // namespace Vulking

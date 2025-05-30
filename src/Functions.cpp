@@ -12,7 +12,7 @@ vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates,
                                vk::ImageTiling tiling,
                                vk::FormatFeatureFlagBits features) {
   for (vk::Format format : candidates) {
-    auto props = Engine::physicalDevice.getFormatProperties(format);
+    auto props = Engine::ctx().physicalDevice.getFormatProperties(format);
 
     if (tiling == vk::ImageTiling::eLinear &&
         (props.linearTilingFeatures & features) == features) {
@@ -87,20 +87,20 @@ vk::UniqueDescriptorPool createDescriptorPool(
           .setPoolSizes(_poolSizes)
           .setMaxSets(size)
           .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
-  return Engine::device->createDescriptorPoolUnique(info);
+  return Engine::ctx().device->createDescriptorPoolUnique(info);
 }
 
 std::vector<vk::UniqueDescriptorSet>
 allocateDescriptorSet(const vk::UniqueDescriptorPool &pool,
                       const std::vector<vk::DescriptorSetLayout> &layouts) {
-  return Engine::device->allocateDescriptorSetsUnique(
+  return Engine::ctx().device->allocateDescriptorSetsUnique(
       vk::DescriptorSetAllocateInfo()
           .setDescriptorPool(pool.get())
           .setSetLayouts(layouts));
 }
 
 vk::UniqueSampler createSampler() {
-  const auto properties = Vulking::Engine::physicalDevice.getProperties();
+  const auto properties = Vulking::Engine::ctx().physicalDevice.getProperties();
   const auto maxSamplerAnisotropy = properties.limits.maxSamplerAnisotropy;
 
   const auto info = vk::SamplerCreateInfo()
@@ -119,12 +119,12 @@ vk::UniqueSampler createSampler() {
                         .setMinLod(0.0f)
                         .setMaxLod(vk::LodClampNone)
                         .setMipLodBias(0.0f);
-  return Vulking::Engine::device->createSamplerUnique(info);
+  return Vulking::Engine::ctx().device->createSamplerUnique(info);
 }
 
 void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width,
                        uint32_t height) {
-  auto cmd = Engine::beginCommand();
+  auto cmd = Engine::ctx().beginCommand("copy_buffer_to_image");
   {
     const auto region =
         vk::BufferImageCopy()
@@ -137,14 +137,13 @@ void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width,
     cmd.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal,
                           region);
   }
-  cmd.end();
-  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+  Engine::ctx().endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
 void transitionImageLayout(vk::Image image, vk::Format format,
                            uint32_t mipLevels, vk::ImageLayout from,
                            vk::ImageLayout to) {
-  auto cmd = Engine::beginCommand();
+  auto cmd = Engine::ctx().beginCommand("transition_layout");
   assert(cmd);
   {
     auto barrier = vk::ImageMemoryBarrier2KHR()
@@ -179,8 +178,7 @@ void transitionImageLayout(vk::Image image, vk::Format format,
         vk::DependencyInfoKHR().setImageMemoryBarriers({barrier});
     cmd.pipelineBarrier2(dependencyInfo, DYNAMIC_DISPATCHER);
   }
-  cmd.end();
-  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+  Engine::ctx().endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
 // https://vulkan-tutorial.com/Generating_Mipmaps#page_Linear-filtering-support
@@ -192,14 +190,14 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
                      const int32_t width, const int32_t height,
                      const uint32_t mipLevels) {
   const auto formatProperties =
-      Engine::physicalDevice.getFormatProperties(format);
+      Engine::ctx().physicalDevice.getFormatProperties(format);
 
   if (!(formatProperties.optimalTilingFeatures &
         vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
     throw std::runtime_error("image format does not support linear blitting");
   }
 
-  auto cmd = Engine::beginCommand();
+  auto cmd = Engine::ctx().beginCommand("generate_mipmaps");
   {
     auto barrier = vk::ImageMemoryBarrier2KHR()
                        .setImage(image)
@@ -292,8 +290,7 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
     cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}),
                             DYNAMIC_DISPATCHER);
   }
-  cmd.end();
-  Engine::endAndSubmitGraphicsCommand(std::move(cmd));
+  Engine::ctx().endAndSubmitGraphicsCommand(std::move(cmd));
 }
 
 /* tuple(data, width, height) */

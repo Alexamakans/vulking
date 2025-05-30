@@ -31,12 +31,13 @@ uint32_t Swapchain::getCurrentResourceIndex() {
   return Engine::ctx().frame % imageCount;
 }
 
-vk::CommandBuffer Context::beginCommand() {
-  vk::CommandBufferAllocateInfo info;
-  info.setCommandPool(commandPool.get());
-  info.setLevel(vk::CommandBufferLevel::ePrimary);
-  info.setCommandBufferCount(1);
+vk::CommandBuffer Context::beginCommand(const char *name) {
+  const auto info = vk::CommandBufferAllocateInfo()
+                        .setCommandPool(commandPool.get())
+                        .setLevel(vk::CommandBufferLevel::ePrimary)
+                        .setCommandBufferCount(1);
   auto commandBuffer = device->allocateCommandBuffers(info).front();
+  NAME_OBJECT(device, commandBuffer, name);
 
   vk::CommandBufferBeginInfo beginInfo;
   beginInfo.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);

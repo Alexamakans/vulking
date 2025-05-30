@@ -8,13 +8,14 @@ GLFWwindow *createWindow() {
                   "failed to create GLFW window");
 }
 
-vk::UniqueRenderPass createRenderPass() {
-  const auto info = Vulking::RenderPassInfo().Create(
-      Vulking::Engine::swapchainImageFormat, Vulking::Engine::msaaSamples);
-  return Vulking::Engine::device->createRenderPassUnique(info.toCreateInfo());
+vk::UniqueRenderPass createRenderPass(const Vulking::Context &ctx) {
+  const auto info = Vulking::RenderPassInfo().Create(ctx.swapchain.imageFormat,
+                                                     ctx.msaaSamples);
+  return ctx.device->createRenderPassUnique(info.toCreateInfo());
 }
 
-vk::UniqueDescriptorSetLayout createDescriptorSetLayout() {
+vk::UniqueDescriptorSetLayout
+createDescriptorSetLayout(const Vulking::Context &ctx) {
   vk::DescriptorSetLayoutBinding base{};
   base.setDescriptorCount(1).setPImmutableSamplers(nullptr);
 
@@ -32,19 +33,19 @@ vk::UniqueDescriptorSetLayout createDescriptorSetLayout() {
   vk::DescriptorSetLayoutCreateInfo info{};
   info.setBindings(bindings);
 
-  return Vulking::Engine::device->createDescriptorSetLayoutUnique(info);
+  return ctx.device->createDescriptorSetLayoutUnique(info);
 }
 
-Shader loadShader(const std::string &path, const std::string &entrypoint,
-                  const char *name) {
+Shader loadShader(const Vulking::Context &ctx, const std::string &path,
+                  const std::string &entrypoint, const char *name) {
   auto code = readFile(path);
 
   auto info = vk::ShaderModuleCreateInfo{}
                   .setCodeSize(code.size())
                   .setPCode(reinterpret_cast<const uint32_t *>(code.data()));
 
-  auto module = Vulking::Engine::device->createShaderModule(info);
-  NAME_OBJECT(Vulking::Engine::device, module, name);
+  auto module = ctx.device->createShaderModule(info);
+  NAME_OBJECT(ctx.device, module, name);
   return {
       .module = module,
       .entrypoint = entrypoint,
@@ -52,7 +53,7 @@ Shader loadShader(const std::string &path, const std::string &entrypoint,
 }
 
 std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
-    const vk::UniqueRenderPass &renderPass,
+    const Vulking::Context &ctx, const vk::UniqueRenderPass &renderPass,
     const std::map<vk::ShaderStageFlagBits, Shader> &shaders,
     const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts,
     const char *name) {
@@ -100,10 +101,9 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
                               .setDepthBoundsTestEnable(vk::False)
                               .setStencilTestEnable(vk::False);
 
-  auto multisampleInfo =
-      vk::PipelineMultisampleStateCreateInfo{}
-          .setSampleShadingEnable(vk::False)
-          .setRasterizationSamples(Vulking::Engine::msaaSamples);
+  auto multisampleInfo = vk::PipelineMultisampleStateCreateInfo{}
+                             .setSampleShadingEnable(vk::False)
+                             .setRasterizationSamples(ctx.msaaSamples);
 
 #define Color(x) vk::ColorComponentFlagBits::e##x
   auto colorBlendAttachment =
@@ -129,7 +129,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
   auto layoutInfo =
       vk::PipelineLayoutCreateInfo{}.setSetLayouts(descriptorSetLayouts);
 
-  auto layout = Vulking::Engine::device->createPipelineLayoutUnique(layoutInfo);
+  auto layout = ctx.device->createPipelineLayoutUnique(layoutInfo);
 
   auto pipelineInfo = vk::GraphicsPipelineCreateInfo{}
                           .setStages(shaderStageInfos)
@@ -146,8 +146,8 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
                           .setSubpass(0)
                           .setBasePipelineHandle(VK_NULL_HANDLE);
 
-  auto pipeline = Vulking::Engine::device->createGraphicsPipelineUnique(
-      VK_NULL_HANDLE, pipelineInfo);
+  auto pipeline =
+      ctx.device->createGraphicsPipelineUnique(VK_NULL_HANDLE, pipelineInfo);
   switch (pipeline.result) {
   case vk::Result::eSuccess:
   case vk::Result::ePipelineCompileRequiredEXT:
@@ -157,7 +157,12 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> createGraphicsPipeline(
         std::format("failed creating graphics pipeline: {}",
                     vk::to_string(pipeline.result)));
   }
-  NAME_OBJECT(Vulking::Engine::device, pipeline.value.get(), name);
+  NAME_OBJECT(ctx.device, pipeline.value.get(), name);
 
   return std::make_tuple(std::move(pipeline.value), std::move(layout));
+}
+
+void Shader::destroy() {
+  Vulking::Engine::ctx().device->destroyShaderModule(module);
+  module = nullptr;
 }

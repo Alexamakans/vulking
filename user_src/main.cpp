@@ -2,10 +2,8 @@
 #include "vulking/Buffer.hpp"
 #include "vulking/Image.hpp"
 
-#include <GLFW/glfw3.h>
 #include <chrono>
 #include <ranges>
-#include <vulkan/vulkan_enums.hpp>
 #include <vulking/vulking.hpp>
 
 struct UBO {
@@ -15,10 +13,12 @@ struct UBO {
   alignas(16) glm::mat4 proj;
 };
 
-void updateUBO(const Vulking::Buffer<UBO> &buffer);
-void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
-                          std::vector<Vulking::Buffer<UBO>> &uboBuffers,
-                          vk::ImageView textureImageView, vk::Sampler sampler);
+void updateUBO(const Vulking::Context &ctx, const Vulking::Buffer<UBO> &buffer);
+void updateDescriptorSets(const Vulking::Context &ctx,
+                          const std::vector<vk::UniqueDescriptorSet> &sets,
+                          const std::vector<Vulking::Buffer<UBO>> &uboBuffers,
+                          const vk::ImageView &textureImageView,
+                          const vk::Sampler &sampler);
 
 int main() {
   auto window = createWindow();
@@ -26,24 +26,31 @@ int main() {
   Vulking::Engine engine(window, "Game?", vk::makeApiVersion(0, 0, 0, 1),
                          extensions);
 
+  auto &ctx = engine.getContext();
+
   std::map<vk::ShaderStageFlagBits, Shader> shaders = {
       {vk::ShaderStageFlagBits::eVertex,
-       loadShader("assets/shaders/test.vert.spv", "main", "vertex_shader")},
+       loadShader(ctx, "assets/shaders/test.vert.spv", "main",
+                  "vertex_shader")},
       {vk::ShaderStageFlagBits::eFragment,
-       loadShader("assets/shaders/test.frag.spv", "main", "fragment_shader")},
+       loadShader(ctx, "assets/shaders/test.frag.spv", "main",
+                  "fragment_shader")},
   };
 
-  auto renderPass = createRenderPass();
-  auto descriptorSetLayout = createDescriptorSetLayout();
+  auto renderPass = createRenderPass(ctx);
+  auto descriptorSetLayout = createDescriptorSetLayout(ctx);
   std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{
       descriptorSetLayout.get()};
   auto [pipeline, pipelineLayout] = createGraphicsPipeline(
-      renderPass, shaders, descriptorSetLayouts, "graphics_pipeline");
+      ctx, renderPass, shaders, descriptorSetLayouts, "graphics_pipeline");
 
-  engine.createFramebuffers(renderPass);
+  for (auto &[_, shader] : shaders) {
+    shader.destroy();
+  }
 
-  const auto swapchainImageCount = engine.getSwapchainImageCount();
+  ctx.swapchain.createFramebuffers(renderPass.get());
 
+  const auto swapchainImageCount = ctx.swapchain.imageCount;
   auto descriptorPool = Vulking::createDescriptorPool(
       swapchainImageCount,
       {{vk::DescriptorType::eUniformBuffer, swapchainImageCount},
@@ -65,15 +72,15 @@ int main() {
   auto mesh = Vulking::Mesh("assets/models/viking_room.obj", "viking_room");
   mesh.releaseCPUResources();
 
-  auto textureImage = Vulking::Image(
-      "assets/textures/viking_room.png", Vulking::Engine::msaaSamples,
-      vk::Format::eR8G8B8A8Srgb, "viking_room_texture");
-  auto textureImageView = engine.createImageViewUnique(
+  auto textureImage =
+      Vulking::Image("assets/textures/viking_room.png", ctx.msaaSamples,
+                     vk::Format::eR8G8B8A8Srgb, "viking_room_texture");
+  auto textureImageView = engine.getContext().createImageViewUnique(
       textureImage.image.get(), vk::Format::eR8G8B8A8Srgb,
       vk::ImageAspectFlagBits::eColor, textureImage.getMipLevels());
   auto textureSampler = Vulking::createSampler();
 
-  updateDescriptorSets(descriptorSets, uboBuffers, textureImageView.get(),
+  updateDescriptorSets(ctx, descriptorSets, uboBuffers, textureImageView.get(),
                        textureSampler.get());
   // this shouldn't be here end
 
@@ -81,7 +88,7 @@ int main() {
     std::cout << "polling events" << std::endl;
     glfwPollEvents();
     std::cout << "beginning render" << std::endl;
-    auto ok = engine.beginRender();
+    auto ok = ctx.beginRender();
     if (!ok) {
       std::cout << "beginRender returned false, skipped frame" << std::endl;
       continue;
@@ -90,7 +97,7 @@ int main() {
     // draw frame start
 
     cmd.begin(vk::CommandBufferBeginInfo{});
-    updateUBO(uboBuffers[engine.getCurrentSwapchainResourceIndex()]);
+    updateUBO(ctx, uboBuffers[ctx.swapchain.getCurrentResourceIndex()]);
 
     auto clearValues = std::array<vk::ClearValue, 2>{};
     clearValues[0].setColor(
@@ -99,8 +106,8 @@ int main() {
     const auto renderPassBeginInfo =
         vk::RenderPassBeginInfo{}
             .setRenderPass(renderPass.get())
-            .setFramebuffer(engine.getFramebuffer())
-            .setRenderArea(vk::Rect2D{}.setExtent(engine.swapchainExtent))
+            .setFramebuffer(ctx.swapchain.getFramebuffer())
+            .setRenderArea(vk::Rect2D{}.setExtent(ctx.swapchain.extent))
             .setClearValues(clearValues);
 
     cmd.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
@@ -110,14 +117,14 @@ int main() {
       const auto viewport = vk::Viewport{}
                                 .setX(0.0f)
                                 .setY(0.0f)
-                                .setWidth((float)engine.swapchainExtent.width)
-                                .setHeight((float)engine.swapchainExtent.height)
+                                .setWidth((float)ctx.swapchain.extent.width)
+                                .setHeight((float)ctx.swapchain.extent.height)
                                 .setMinDepth(0.0f)
                                 .setMaxDepth(1.0f);
       cmd.setViewport(0, 1, &viewport);
 
       const auto scissor =
-          vk::Rect2D{}.setExtent(engine.swapchainExtent).setOffset({0, 0});
+          vk::Rect2D{}.setExtent(ctx.swapchain.extent).setOffset({0, 0});
       cmd.setScissor(0, 1, &scissor);
 
       // binds mesh's vertex and index buffers
@@ -134,13 +141,14 @@ int main() {
 
     // draw frame end
     std::cout << "ending render" << std::endl;
-    engine.endRender({cmd});
+    ctx.endRender({cmd});
   }
 
-  Vulking::Engine::device->waitIdle();
+  ctx.device->waitIdle();
 }
 
-void updateUBO(const Vulking::Buffer<UBO> &buffer) {
+void updateUBO(const Vulking::Context &ctx,
+               const Vulking::Buffer<UBO> &buffer) {
   static auto startTime = std::chrono::high_resolution_clock::now();
 
   auto currentTime = std::chrono::high_resolution_clock::now();
@@ -154,19 +162,20 @@ void updateUBO(const Vulking::Buffer<UBO> &buffer) {
   ubo.view =
       glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.proj =
-      glm::perspective(glm::radians(45.0f),
-                       Vulking::Engine::swapchainExtent.width /
-                           (float)Vulking::Engine::swapchainExtent.height,
-                       0.1f, 10.0f);
+  ubo.proj = glm::perspective(glm::radians(45.0f),
+                              ctx.swapchain.extent.width /
+                                  (float)ctx.swapchain.extent.height,
+                              0.1f, 10.0f);
   ubo.proj[1][1] *= -1;
 
   buffer.set(ubo);
 }
 
-void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
-                          std::vector<Vulking::Buffer<UBO>> &uboBuffers,
-                          vk::ImageView textureImageView, vk::Sampler sampler) {
+void updateDescriptorSets(const Vulking::Context &ctx,
+                          const std::vector<vk::UniqueDescriptorSet> &sets,
+                          const std::vector<Vulking::Buffer<UBO>> &uboBuffers,
+                          const vk::ImageView &textureImageView,
+                          const vk::Sampler &sampler) {
   for (auto [i, set] : std::views::enumerate(sets)) {
     const auto bufferInfo = vk::DescriptorBufferInfo{}
                                 .setBuffer(uboBuffers[i].getBuffer())
@@ -197,6 +206,6 @@ void updateDescriptorSets(std::vector<vk::UniqueDescriptorSet> &sets,
         .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
         .setImageInfo(imageInfo);
 
-    Vulking::Engine::device->updateDescriptorSets(writes, {});
+    ctx.device->updateDescriptorSets(writes, {});
   }
 }
