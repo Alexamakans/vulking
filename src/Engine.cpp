@@ -191,12 +191,12 @@ bool Engine::isDeviceSuitable(vk::PhysicalDevice physicalDevice) const {
   // families.
   auto props = physicalDevice.getProperties();
 
-  LOG("GPU Device properties:");
-  LOG("\t vendorID = " << props.vendorID);
-  LOG("\t deviceID = " << props.deviceID);
-  LOG("\t apiVersion = " << props.apiVersion);
-  LOG("\t driverVersion = " << props.driverVersion);
-  LOG("\t deviceName = " << props.deviceName);
+  LOG_INFO("GPU Device properties:");
+  LOG_INFO("\t vendorID = " << props.vendorID);
+  LOG_INFO("\t deviceID = " << props.deviceID);
+  LOG_INFO("\t apiVersion = " << props.apiVersion);
+  LOG_INFO("\t driverVersion = " << props.driverVersion);
+  LOG_INFO("\t deviceName = " << props.deviceName);
 
   return props.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ||
          props.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;

@@ -19,7 +19,8 @@ popd
 mkdir -p build
 pushd build
 #rm -rf ./*
-cmake -S .. -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+BUILD_TYPE=$1 || "Debug"
+cmake -S .. -GNinja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 ninja
 popd
 

@@ -23,6 +23,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Logging.hpp"
+
 template <typename T> uint64_t getVulkanHandle(T const &cppHandle) {
   return uint64_t(static_cast<T::CType>(cppHandle));
 }
@@ -74,30 +76,27 @@ static const char *vkResultToString(vk::Result result) {
   }
 }
 
+#define RELATIVE_FILE (&__FILE__[sizeof(PROJECT_ROOT) - 1])
 #define CHK(expr, msg)                                                         \
   do {                                                                         \
     vk::Result __result = (expr);                                              \
     vk::detail::resultCheck(                                                   \
-        __result,                                                              \
-        std::format("{}:{} [{}] >{} (vk::Result: {})", __FILE__, __LINE__,     \
-                    __PRETTY_FUNCTION__, msg, vkResultToString(__result))      \
-            .c_str());                                                         \
+        __result, std::format("{}:{} [{}] >{} (vk::Result: {})",               \
+                              RELATIVE_FILE, __LINE__, __PRETTY_FUNCTION__,    \
+                              msg, vkResultToString(__result))                 \
+                      .c_str());                                               \
   } while (0)
 
 #define STYPE(x) VK_STRUCTURE_TYPE_##x
 
+extern vk::detail::DispatchLoaderDynamic DYNAMIC_DISPATCHER;
+
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
 #define NAME_OBJECT(...)
-#define LOG(x) std::cout << x;
-#define LOG_DEBUG(...)
 #else
-#define LOG(x) std::cout << x;
-#define LOG_DEBUG(x) std::cout << "[debug] " << x;
 constexpr bool enableValidationLayers = true;
-
 // Initialized by Engine in constructor
-extern vk::detail::DispatchLoaderDynamic DYNAMIC_DISPATCHER;
 
 #define NAME_OBJECT(uniqueDevice, handle, name)                                \
   nameObject(uniqueDevice.get(), handle, name)

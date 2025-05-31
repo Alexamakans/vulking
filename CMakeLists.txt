@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
 
 project(Vulking)
+add_compile_definitions(PROJECT_ROOT="${CMAKE_SOURCE_DIR}/")
 
 set(Vulking_VERSION_MAJOR 0)
 set(Vulking_VERSION_MINOR 0)
