@@ -69,9 +69,7 @@ static const char *vkResultToString(vk::Result result) {
     return "ErrorNativeWindowInUseKHR";
   case vk::Result::eErrorOutOfPoolMemory:
     return "ErrorOutOfPoolMemory";
-  // Add more as needed
   default:
-    std::cout << "result: " << result << std::endl;
     return "UnknownError";
   }
 }
@@ -91,7 +89,11 @@ static const char *vkResultToString(vk::Result result) {
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
 #define NAME_OBJECT(...)
+#define LOG(x) std::cout << x;
+#define LOG_DEBUG(...)
 #else
+#define LOG(x) std::cout << x;
+#define LOG_DEBUG(x) std::cout << "[debug] " << x;
 constexpr bool enableValidationLayers = true;
 
 // Initialized by Engine in constructor

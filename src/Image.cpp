@@ -69,8 +69,6 @@ Image::Image(const std::string &path, vk::SampleCountFlagBits samples,
 
 void Image::init(vk::ImageCreateInfo info,
                  vk::MemoryPropertyFlags memoryProperties, const char *name) {
-  std::cout << "Device: " << std::hex << Engine::ctx().device.get()
-            << std::endl;
   image = Engine::ctx().device->createImageUnique(info);
   NAME_OBJECT(Engine::ctx().device, image.get(), name);
 

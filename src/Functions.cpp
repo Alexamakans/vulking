@@ -225,7 +225,6 @@ void generateMipmaps(const vk::Image image, const vk::Format format,
           .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
           .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
           .subresourceRange.setBaseMipLevel(i - 1);
-      std::cout << "base mip level = " << i - 1 << std::endl;
 
       cmd.pipelineBarrier2KHR(dependencyInfo.setImageMemoryBarriers({barrier}),
                               DYNAMIC_DISPATCHER);

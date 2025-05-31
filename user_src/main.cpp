@@ -85,12 +85,12 @@ int main() {
   // this shouldn't be here end
 
   while (!glfwWindowShouldClose(window)) {
-    std::cout << "polling events" << std::endl;
+    LOG_DEBUG("polling events");
     glfwPollEvents();
-    std::cout << "beginning render" << std::endl;
+    LOG_DEBUG("beginning render");
     auto ok = ctx.beginRender();
     if (!ok) {
-      std::cout << "beginRender returned false, skipped frame" << std::endl;
+      LOG_DEBUG("beginRender returned false, skipped frame");
       continue;
     }
     auto [cmd, index] = ok.value();
@@ -140,7 +140,7 @@ int main() {
     cmd.end();
 
     // draw frame end
-    std::cout << "ending render" << std::endl;
+    LOG_DEBUG("ending render");
     ctx.endRender({cmd});
   }
 

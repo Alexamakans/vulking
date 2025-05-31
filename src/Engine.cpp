@@ -191,28 +191,16 @@ bool Engine::isDeviceSuitable(vk::PhysicalDevice physicalDevice) const {
   // families.
   auto props = physicalDevice.getProperties();
 
-  std::cout << "GPU Device properties:\n";
-  std::cout << "\t vendorID = " << props.vendorID << "\n";
-  std::cout << "\t deviceID = " << props.deviceID << "\n";
-  std::cout << "\t apiVersion = " << props.apiVersion << "\n";
-  std::cout << "\t driverVersion = " << props.driverVersion << "\n";
-  std::cout << "\t deviceName = " << props.deviceName << std::endl;
+  LOG("GPU Device properties:");
+  LOG("\t vendorID = " << props.vendorID);
+  LOG("\t deviceID = " << props.deviceID);
+  LOG("\t apiVersion = " << props.apiVersion);
+  LOG("\t driverVersion = " << props.driverVersion);
+  LOG("\t deviceName = " << props.deviceName);
 
   return props.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ||
          props.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 }
-
-struct LoggingDeviceDeleter {
-  vk::Device device;
-
-  LoggingDeviceDeleter() = default;
-  explicit LoggingDeviceDeleter(vk::Device d) : device(d) {}
-
-  void operator()(vk::Device d) const noexcept {
-    std::cout << "[DEBUG] Destroying vk::Device at " << d << std::endl;
-    d.destroy();
-  }
-};
 
 vk::UniqueDevice Engine::createDevice() {
   const auto indices =

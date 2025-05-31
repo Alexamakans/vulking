@@ -33,20 +33,17 @@ struct BufferMemory {
 };
 template <typename T> class Buffer {
 public:
-  Buffer() {
-    std::cout << "buffer default constructor: " << _name << std::endl;
-  };
+  Buffer() { LOG_DEBUG("buffer default constructor: " << _name); };
   Buffer(const Buffer &) = delete;
   Buffer &operator=(const Buffer &) = delete;
   Buffer(Buffer &&other) noexcept
       : buffer(std::move(other.buffer)), memory(std::move(other.memory)),
         _name(std::move(other._name)), size(other.size), pData(other.pData) {
-    std::cout << "buffer move: " << _name << std::endl;
+    LOG_DEBUG("buffer move: " << _name);
   }
   Buffer &operator=(Buffer &&other) noexcept {
     if (this != &other) {
-      std::cout << "buffer move assignment: " << _name << " <- " << other._name
-                << std::endl;
+      LOG_DEBUG("buffer move assignment: " << _name << " <- " << other._name);
       if (isMapped()) {
         unmap();
       }
@@ -97,7 +94,7 @@ template <typename T>
 inline Buffer<T>::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                          vk::MemoryPropertyFlags properties, const char *name)
     : size(size) {
-  std::cout << "buffer 1 constructor: " << name << std::endl;
+  LOG_DEBUG("buffer 1 constructor: " << name);
   assert(size != 0);
   init(usage, properties, name);
 }
@@ -107,7 +104,7 @@ inline Buffer<T>::Buffer(const vk::ArrayProxy<T> &src,
                          vk::BufferUsageFlags usage,
                          vk::MemoryPropertyFlags properties, const char *name)
     : size(sizeof(T) * src.size()) {
-  std::cout << "buffer 2 constructor: " << name << std::endl;
+  LOG_DEBUG("buffer 2 constructor: " << name);
   assert(size != 0);
   init(usage, properties, name);
   map();
@@ -119,7 +116,7 @@ template <typename T>
 Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
                   vk::MemoryPropertyFlags properties, const char *name)
     : size(size) {
-  std::cout << "buffer 3 constructor: " << name << std::endl;
+  LOG_DEBUG("buffer 3 constructor: " << name);
   assert(size != 0);
   init(usage, properties, name);
   map();
@@ -130,7 +127,7 @@ Buffer<T>::Buffer(const T *src, vk::DeviceSize size, vk::BufferUsageFlags usage,
 template <typename T> void Buffer<T>::map() { mapTo(&pData); }
 
 template <typename T> void Buffer<T>::mapTo(void **mapped) {
-  std::cout << "\tmapped buffer: " << _name << std::endl;
+  LOG_DEBUG("\tmapped buffer: " << _name);
   assert(!isMapped());
   *mapped = Engine::ctx().device->mapMemory(memory.get(), 0, size);
   pData = *mapped;
@@ -141,7 +138,7 @@ template <typename T> void Buffer<T>::set(const T *src, size_t size) const {
     throw std::runtime_error(
         std::format("size ({}) too large, must be <= {}", size, this->size));
   }
-  std::cout << "\t\tset buffer: " << _name << std::endl;
+  LOG_DEBUG("\t\tset buffer: " << _name);
   assert(isMapped());
   memcpy(pData, src, size);
 }
@@ -151,14 +148,14 @@ template <typename T> void Buffer<T>::set(const vk::ArrayProxy<T> &src) const {
 }
 
 template <typename T> void Buffer<T>::unmap() {
-  std::cout << "\tunmapped buffer: " << _name << std::endl;
+  LOG_DEBUG("\tunmapped buffer: " << _name);
   assert(isMapped());
   Engine::ctx().device->unmapMemory(memory.get());
   pData = nullptr;
 }
 
 template <typename T> void Buffer<T>::copyTo(const Buffer &dst) {
-  std::cout << "copy buffer " << _name << " -> " << dst._name << std::endl;
+  LOG_DEBUG("copy buffer " << _name << " -> ");
   assert(buffer);
   assert(dst.buffer);
   assert(size != 0);
